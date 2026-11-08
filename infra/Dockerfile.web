@@ -1,0 +1,16 @@
+FROM node:26.13.0-bookworm-slim AS build
+WORKDIR /app
+RUN npm install -g pnpm@12.18.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/shared/package.json packages/shared/package.json
+RUN pnpm install --frozen-lockfile
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY apps/web apps/web
+RUN pnpm --filter @wardrobe/web build
+FROM caddy:2.10.2-alpine
+COPY --from=build /app/apps/web/dist /srv
+COPY infra/Caddyfile /etc/caddy/Caddyfile
