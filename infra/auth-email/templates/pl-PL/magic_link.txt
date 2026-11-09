@@ -1,0 +1,11 @@
+Twój link do logowania — Smart Wardrobe
+
+Wejdź w swój dzień.
+
+Użyj tego jednorazowego linku, aby bezpiecznie zalogować się do Smart Wardrobe.
+
+Zaloguj się do garderoby: {{ .ConfirmationURL }}
+
+Jeśli nie prosisz o link do logowania, zignoruj wiadomość. Nie udostępniaj linku innym osobom.
+
+Smart Wardrobe

@@ -1,0 +1,11 @@
+Zaproszenie do Smart Wardrobe
+
+Jest tu miejsce dla Ciebie.
+
+Otrzymujesz zaproszenie do Smart Wardrobe. Przyjmij je, aby rozpocząć korzystanie z aplikacji i uporządkować swoją garderobę.
+
+Przyjmij zaproszenie: {{ .ConfirmationURL }}
+
+Jeśli nie spodziewasz się tego zaproszenia, możesz zignorować wiadomość.
+
+Smart Wardrobe

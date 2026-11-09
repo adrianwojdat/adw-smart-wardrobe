@@ -1,0 +1,11 @@
+Kod potwierdzający — Smart Wardrobe
+
+To chwila dla bezpieczeństwa.
+
+Wpisz poniższy jednorazowy kod w miejscu, w którym aplikacja prosi o potwierdzenie tożsamości.
+
+Kod: {{ .Token }}
+
+Nie udostępniaj kodu innym osobom. Jeśli nie wykonujesz tej operacji, zignoruj wiadomość.
+
+Smart Wardrobe

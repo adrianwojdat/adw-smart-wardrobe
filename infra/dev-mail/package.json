@@ -1,0 +1,1 @@
+{"name":"wardrobe-development-mail-relay","private":true,"type":"module","dependencies":{"nodemailer":"10.4.0","smtp-server":"3.21.3"}}

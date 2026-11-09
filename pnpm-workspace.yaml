@@ -4,6 +4,10 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
+  onnxruntime-node: true
   msgpackr-extract: false
 minimumReleaseAgeExclude:
   - bullmq@6.7.2
+  - '@bull-board/api@9.12.0'
+  - '@bull-board/fastify@9.12.0'
+  - '@bull-board/ui@9.12.0'

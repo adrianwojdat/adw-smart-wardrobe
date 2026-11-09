@@ -1,0 +1,49 @@
+{
+  "confirmation": {
+    "subject": "Potwierdź adres e-mail — Smart Wardrobe",
+    "eyebrow": "TWOJA NOWA PRZESTRZEŃ",
+    "title": "Witaj w swojej garderobie.",
+    "text": "Jeszcze jeden krok. Potwierdź swój adres e-mail, aby otworzyć prywatną przestrzeń na ulubione ubrania i codzienne inspiracje.",
+    "button": "Potwierdź adres e-mail",
+    "security": "Jeśli nie zakładasz konta w Smart Wardrobe, zignoruj tę wiadomość."
+  },
+  "recovery": {
+    "subject": "Zresetuj hasło — Smart Wardrobe",
+    "eyebrow": "BEZPIECZNY POWRÓT",
+    "title": "Wróć do swojej garderoby.",
+    "text": "Otrzymaliśmy prośbę o zmianę hasła do Twojego konta. Wybierz przycisk poniżej, aby ustawić nowe hasło i odzyskać dostęp.",
+    "button": "Ustaw nowe hasło",
+    "security": "Jeśli nie prosisz o zmianę hasła, zignoruj tę wiadomość. Twoje obecne hasło pozostanie bez zmian. Nie przekazuj tego linku innym osobom."
+  },
+  "invite": {
+    "subject": "Zaproszenie do Smart Wardrobe",
+    "eyebrow": "DOBRZE MIEĆ WSPÓLNĄ PRZESTRZEŃ",
+    "title": "Jest tu miejsce dla Ciebie.",
+    "text": "Otrzymujesz zaproszenie do Smart Wardrobe. Przyjmij je, aby rozpocząć korzystanie z aplikacji i uporządkować swoją garderobę.",
+    "button": "Przyjmij zaproszenie",
+    "security": "Jeśli nie spodziewasz się tego zaproszenia, możesz zignorować wiadomość."
+  },
+  "email_change": {
+    "subject": "Potwierdź zmianę adresu e-mail — Smart Wardrobe",
+    "eyebrow": "TWOJE KONTO",
+    "title": "Potwierdź nowy adres.",
+    "text": "Rozpoczęto zmianę adresu e-mail Twojego konta. Potwierdź tę operację przyciskiem poniżej. Ze względów bezpieczeństwa może być potrzebne potwierdzenie na obu adresach.",
+    "button": "Potwierdź zmianę adresu",
+    "security": "Jeśli nie zlecasz zmiany adresu e-mail, nie potwierdzaj jej i sprawdź bezpieczeństwo swojego konta."
+  },
+  "magic_link": {
+    "subject": "Twój link do logowania — Smart Wardrobe",
+    "eyebrow": "TWOJA GARDEROBA CZEKA",
+    "title": "Wejdź w swój dzień.",
+    "text": "Użyj tego jednorazowego linku, aby bezpiecznie zalogować się do Smart Wardrobe.",
+    "button": "Zaloguj się do garderoby",
+    "security": "Jeśli nie prosisz o link do logowania, zignoruj wiadomość. Nie udostępniaj linku innym osobom."
+  },
+  "reauthentication": {
+    "subject": "Kod potwierdzający — Smart Wardrobe",
+    "eyebrow": "POTWIERDZENIE TOŻSAMOŚCI",
+    "title": "To chwila dla bezpieczeństwa.",
+    "text": "Wpisz poniższy jednorazowy kod w miejscu, w którym aplikacja prosi o potwierdzenie tożsamości.",
+    "security": "Nie udostępniaj kodu innym osobom. Jeśli nie wykonujesz tej operacji, zignoruj wiadomość."
+  }
+}

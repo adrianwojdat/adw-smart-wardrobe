@@ -1,0 +1,11 @@
+Zresetuj hasło — Smart Wardrobe
+
+Wróć do swojej garderoby.
+
+Otrzymaliśmy prośbę o zmianę hasła do Twojego konta. Wybierz przycisk poniżej, aby ustawić nowe hasło i odzyskać dostęp.
+
+Ustaw nowe hasło: {{ .ConfirmationURL }}
+
+Jeśli nie prosisz o zmianę hasła, zignoruj tę wiadomość. Twoje obecne hasło pozostanie bez zmian. Nie przekazuj tego linku innym osobom.
+
+Smart Wardrobe

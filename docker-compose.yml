@@ -35,7 +35,7 @@ services:
       AUTH_JWT_SECRET: ${JWT_SECRET}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
       SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY}
-      ENABLED_FEATURES_LOGS_ALL: 'false'
+      ENABLED_FEATURES_LOGS_ALL: "false"
       SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
       EDGE_FUNCTIONS_MANAGEMENT_FOLDER: /app/edge-functions
     volumes:
@@ -45,7 +45,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
   api-gw:
     image: envoyproxy/envoy:v1.39.6
     restart: unless-stopped
@@ -54,6 +54,7 @@ services:
         aliases:
           - envoy
           - kong
+      studio-access: {}
     healthcheck:
       test:
         - CMD-SHELL
@@ -86,9 +87,11 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
+    ports:
+      - 127.0.0.1:8000:8000
   auth:
-    image: supabase/gotrue:v2.197.0
+    image: smart-wardrobe-auth:gotrue-v2.197.0
     restart: unless-stopped
     healthcheck:
       test:
@@ -134,13 +137,30 @@ services:
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Potwierdź adres e-mail — Smart Wardrobe
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://127.0.0.1:8089/pl-PL/confirmation.html
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: Zresetuj hasło — Smart Wardrobe
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://127.0.0.1:8089/pl-PL/recovery.html
+      GOTRUE_MAILER_SUBJECTS_INVITE: Zaproszenie do Smart Wardrobe
+      GOTRUE_MAILER_TEMPLATES_INVITE: http://127.0.0.1:8089/pl-PL/invite.html
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: Potwierdź zmianę adresu e-mail — Smart Wardrobe
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://127.0.0.1:8089/pl-PL/email_change.html
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Twój link do logowania — Smart Wardrobe
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://127.0.0.1:8089/pl-PL/magic_link.html
+      GOTRUE_MAILER_SUBJECTS_REAUTHENTICATION: Kod potwierdzający — Smart Wardrobe
+      GOTRUE_MAILER_TEMPLATES_REAUTHENTICATION: http://127.0.0.1:8089/pl-PL/reauthentication.html
       GOTRUE_PASSWORD_MIN_LENGTH: 12
       GOTRUE_SECURITY_REFRESH_TOKEN_REUSE_INTERVAL: 10
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
+    build:
+      context: ./infra/auth-email
+    init: true
+    volumes:
+      - ./infra/auth-email/templates:/email-templates:ro
     networks:
       - default
       - egress
@@ -167,7 +187,7 @@ services:
       PGRST_ADMIN_SERVER_PORT: 3001
       PGRST_ADMIN_SERVER_HOST: localhost
       PGRST_JWT_SECRET: ${JWT_JWKS:-${JWT_SECRET}}
-      PGRST_DB_USE_LEGACY_GUCS: 'false'
+      PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
     command:
       - postgrest
@@ -175,7 +195,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
   realtime:
     container_name: realtime-dev.supabase-realtime
     image: supabase/realtime:v2.148.3
@@ -206,16 +226,16 @@ services:
       METRICS_JWT_SECRET: ${JWT_SECRET}
       ERL_AFLAGS: -proto_dist inet_tcp
       DNS_NODES: "''"
-      RLIMIT_NOFILE: '10000'
+      RLIMIT_NOFILE: "10000"
       APP_NAME: realtime
-      SEED_SELF_HOST: 'true'
-      RUN_JANITOR: 'true'
-      DISABLE_HEALTHCHECK_LOGGING: 'true'
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
   storage:
     image: supabase/storage-api:v1.89.12
     restart: unless-stopped
@@ -245,14 +265,14 @@ services:
       AUTH_JWT_SECRET: ${JWT_SECRET}
       DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       STORAGE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
-      REQUEST_ALLOW_X_FORWARDED_PATH: 'true'
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
       FILE_SIZE_LIMIT: 10485760
       STORAGE_BACKEND: file
       GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET}
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
       TENANT_ID: ${STORAGE_TENANT_ID}
       REGION: ${REGION}
-      ENABLE_IMAGE_TRANSFORMATION: 'true'
+      ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://imgproxy:5001
       S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
       S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
@@ -262,7 +282,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
   imgproxy:
     image: darthsim/imgproxy:v4.0.21
     restart: unless-stopped
@@ -279,14 +299,14 @@ services:
     environment:
       IMGPROXY_BIND: :5001
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
-      IMGPROXY_USE_ETAG: 'true'
+      IMGPROXY_USE_ETAG: "true"
       IMGPROXY_AUTO_WEBP: ${IMGPROXY_AUTO_WEBP}
       IMGPROXY_MAX_SRC_RESOLUTION: 16.8
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
   meta:
     image: supabase/postgres-meta:v0.100.0
     restart: unless-stopped
@@ -305,7 +325,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
   functions:
     image: supabase/edge-runtime:v1.77.9
     mem_limit: ${FUNCTIONS_MEMORY_LIMIT:-2g}
@@ -336,14 +356,14 @@ services:
     command:
       - start
       - --user-worker-request-idle-timeout
-      - '150000'
+      - "150000"
       - --main-service
       - /home/deno/functions/main
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
     networks:
       - default
       - egress
@@ -390,7 +410,12 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
+    ports:
+      - 127.0.0.1:54322:5432
+    networks:
+      - default
+      - database-access
   supavisor:
     image: supabase/supavisor:2.9.13
     restart: unless-stopped
@@ -419,7 +444,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_URL: ecto://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
-      CLUSTER_POSTGRES: 'true'
+      CLUSTER_POSTGRES: "true"
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       VAULT_ENC_KEY: ${VAULT_ENC_KEY}
       API_JWT_SECRET: ${JWT_SECRET}
@@ -439,7 +464,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
   redis:
     image: redis:8.2.3-alpine
     restart: unless-stopped
@@ -459,6 +484,33 @@ services:
       test:
         - CMD-SHELL
         - REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep PONG
+  dev-mail-relay:
+    profiles:
+      - dev-mail
+    build:
+      context: ./infra/dev-mail
+    restart: unless-stopped
+    init: true
+    networks:
+      - default
+      - egress
+    environment:
+      DEV_MAIL_RELAY: "true"
+      DEV_SMTP_HOST: ${DEV_SMTP_HOST:-host.docker.internal}
+      DEV_SMTP_PORT: ${DEV_SMTP_PORT:-1025}
+      DEV_SMTP_USER: ${DEV_SMTP_USER:-}
+      DEV_SMTP_PASS: ${DEV_SMTP_PASS:-}
+    mem_limit: 128m
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
   migrate:
     build: &a1
       context: .
@@ -491,11 +543,14 @@ services:
       NODE_ENV: production
       PORT: 3000
       APP_ORIGIN: ${APP_ORIGIN}
+      APP_ADDITIONAL_ORIGINS: ${APP_ADDITIONAL_ORIGINS:-}
       COOKIE_SECURE: ${COOKIE_SECURE}
       SUPABASE_URL: http://api-gw:8000
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SESSION_DATABASE_URL: postgresql://wardrobe_session:${SESSION_DB_PASSWORD}@db:5432/postgres
       SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      QUEUE_ADMIN_USER_IDS: ${QUEUE_ADMIN_USER_IDS:-}
       SMTP_ENABLED: ${SMTP_HOST:-}
       EMAIL_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
       NODE_OPTIONS: --max-old-space-size=384
@@ -534,12 +589,13 @@ services:
       - egress
     environment:
       NODE_ENV: production
+      GARMENT_ANALYSIS_PROVIDER: ${GARMENT_ANALYSIS_PROVIDER:-fashion-siglip}
       WORKER_DATABASE_URL: postgresql://wardrobe_worker:${WORKER_DB_PASSWORD}@db:5432/postgres
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       SUPABASE_URL: http://api-gw:8000
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+      OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-}
       NODE_OPTIONS: --max-old-space-size=256
     depends_on:
       migrate:
@@ -558,7 +614,7 @@ services:
         - node
         - -e
         - fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
-    mem_limit: 512m
+    mem_limit: 1536m
   web:
     build:
       context: .
@@ -602,3 +658,5 @@ networks:
   default:
     internal: true
   egress: {}
+  database-access: {}
+  studio-access: {}

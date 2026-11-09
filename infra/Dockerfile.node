@@ -1,5 +1,6 @@
 FROM node:26.13.0-bookworm-slim AS build
 WORKDIR /app
+ENV ONNXRUNTIME_NODE_INSTALL=skip
 RUN npm install -g pnpm@12.18.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
@@ -17,5 +18,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build --chown=node:node /app /app
 COPY --chown=node:node supabase/migrations supabase/migrations
+COPY --chown=node:node infra/models /app/infra/models
 USER node
 CMD ["node", "--import", "tsx", "apps/api/src/index.ts"]

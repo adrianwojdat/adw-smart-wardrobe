@@ -1,5 +1,6 @@
 FROM node:26.13.0-bookworm-slim AS build
 WORKDIR /app
+ENV ONNXRUNTIME_NODE_INSTALL=skip
 RUN npm install -g pnpm@12.18.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json

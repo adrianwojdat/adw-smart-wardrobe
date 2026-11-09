@@ -1,0 +1,11 @@
+Potwierdź zmianę adresu e-mail — Smart Wardrobe
+
+Potwierdź nowy adres.
+
+Rozpoczęto zmianę adresu e-mail Twojego konta. Potwierdź tę operację przyciskiem poniżej. Ze względów bezpieczeństwa może być potrzebne potwierdzenie na obu adresach.
+
+Potwierdź zmianę adresu: {{ .ConfirmationURL }}
+
+Jeśli nie zlecasz zmiany adresu e-mail, nie potwierdzaj jej i sprawdź bezpieczeństwo swojego konta.
+
+Smart Wardrobe

@@ -1,0 +1,11 @@
+Potwierdź adres e-mail — Smart Wardrobe
+
+Witaj w swojej garderobie.
+
+Jeszcze jeden krok. Potwierdź swój adres e-mail, aby otworzyć prywatną przestrzeń na ulubione ubrania i codzienne inspiracje.
+
+Potwierdź adres e-mail: {{ .ConfirmationURL }}
+
+Jeśli nie zakładasz konta w Smart Wardrobe, zignoruj tę wiadomość.
+
+Smart Wardrobe
