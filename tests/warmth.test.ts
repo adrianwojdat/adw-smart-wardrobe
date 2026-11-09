@@ -38,3 +38,7 @@ it('replaces visual AI heat guesses with shared rules', () => {
   });
   expect(accessory.suggestions.warmth).toBeUndefined();
 });
+it('uses the newly selected category even when an old subtype has not been edited yet', () => {
+  expect(deriveWarmth('outerwear', 'T-shirt')).toBe(4);
+  expect(deriveWarmth('tops', 'Kurtka zimowa')).toBe(1);
+});

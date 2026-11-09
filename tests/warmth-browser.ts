@@ -70,6 +70,9 @@ try {
   expect(saved?.warmth_manual).toBe(true);
   await page.goto(origin + `/garments/${id}/edit`);
   await expect(warmth).toHaveValue('3');
+  await page.getByLabel('Podkategoria', { exact: true }).fill('T-shirt');
+  await page.getByRole('combobox', { name: /^Kategoria/ }).selectOption('tops');
+  await expect(warmth).toHaveValue('1');
   console.log(
     'PASS: new/default and analysed warmth, category changes, accessories, manual override saved and retained.',
   );

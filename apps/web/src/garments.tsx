@@ -65,6 +65,7 @@ function GarmentForm({ existing }: { existing?: Garment }) {
   const [error, setError] = useState<unknown>();
   const [progress, setProgress] = useState('');
   const [savedId, setSavedId] = useState(existing?.id);
+  const [manualWarmthInEdit, setManualWarmthInEdit] = useState(false);
   const form = useForm<z.input<typeof garmentInput>, unknown, GarmentInput>({
     resolver: zodResolver(garmentInput),
     defaultValues: existing ?? {
@@ -82,7 +83,7 @@ function GarmentForm({ existing }: { existing?: Garment }) {
     setValue,
     formState: { errors, isSubmitting, dirtyFields },
   } = form;
-  const category = useGarmentWarmth(form, !!existing);
+  const category = useGarmentWarmth(form, !!existing, manualWarmthInEdit);
   // Keep generated names automatic until the user explicitly edits the name.
   async function submit(data: GarmentInput) {
     setError(undefined);
@@ -330,7 +331,10 @@ function GarmentForm({ existing }: { existing?: Garment }) {
                 disabled={category === 'accessories'}
                 {...register('warmth', {
                   valueAsNumber: true,
-                  onChange: () => setValue('warmth_manual', true, { shouldDirty: true }),
+                  onChange: () => {
+                    setManualWarmthInEdit(true);
+                    setValue('warmth_manual', true, { shouldDirty: true });
+                  },
                 })}
               />
             </label>
