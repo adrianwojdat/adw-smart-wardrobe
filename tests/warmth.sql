@@ -1,6 +1,5 @@
 \set ON_ERROR_STOP on
 begin;
-\ir ../supabase/migrations/0013_category_warmth.sql
 \ir fixtures/development-users.sql
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
 do $$ declare w uuid:=gen_random_uuid(); g uuid; i uuid; j uuid; manual boolean; heat integer; p text; begin

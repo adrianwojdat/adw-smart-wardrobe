@@ -1,7 +1,5 @@
 \set ON_ERROR_STOP on
 begin;
-\ir ../supabase/migrations/0013_category_warmth.sql
-\ir ../supabase/migrations/0014_ai_metadata_preference.sql
 \ir fixtures/development-users.sql
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
 set local role authenticated;
