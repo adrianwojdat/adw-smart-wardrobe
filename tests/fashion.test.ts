@@ -19,7 +19,7 @@ it('keeps classifier vocabulary and names Polish', () => {
     uncertainties: [],
     suggestions: { category: 'tops', subcategory: 'koszulka polo', primary_color: 'bordowy' },
   });
-  expect(result.suggestions.warmth).toBeUndefined();
+  expect(result.suggestions.warmth).toBe(2);
   expect(result.suggestions.material).toBeUndefined();
   expect(result.suggestions).toMatchObject({
     name: 'Bordowa koszulka polo',

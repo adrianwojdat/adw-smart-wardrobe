@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useGarmentWarmth } from './use-garment-warmth';
 import { useAnalysisActivity } from './analysis-activity';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -64,11 +65,7 @@ function GarmentForm({ existing }: { existing?: Garment }) {
   const [error, setError] = useState<unknown>();
   const [progress, setProgress] = useState('');
   const [savedId, setSavedId] = useState(existing?.id);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting, dirtyFields },
-  } = useForm<z.input<typeof garmentInput>, unknown, GarmentInput>({
+  const form = useForm<z.input<typeof garmentInput>, unknown, GarmentInput>({
     resolver: zodResolver(garmentInput),
     defaultValues: existing ?? {
       ...garmentInput.parse({
@@ -79,6 +76,13 @@ function GarmentForm({ existing }: { existing?: Garment }) {
       name: '',
     },
   });
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting, dirtyFields },
+  } = form;
+  const category = useGarmentWarmth(form, !!existing);
   // Keep generated names automatic until the user explicitly edits the name.
   async function submit(data: GarmentInput) {
     setError(undefined);
@@ -314,12 +318,16 @@ function GarmentForm({ existing }: { existing?: Garment }) {
               </select>
             </label>
             <label>
-              Ciepło (1–5)
+              {category === 'accessories' ? 'Ciepło — nie dotyczy akcesoriów' : 'Ciepło (1–5)'}
               <input
                 type="number"
                 min={1}
                 max={5}
-                {...register('warmth', { valueAsNumber: true })}
+                disabled={category === 'accessories'}
+                {...register('warmth', {
+                  valueAsNumber: true,
+                  onChange: () => setValue('warmth_manual', true, { shouldDirty: true }),
+                })}
               />
             </label>
           </div>
@@ -679,7 +687,9 @@ export function GarmentDetail({ id }: { id: string }) {
                 label: 'Grubość / ciepło',
                 value:
                   { thin: 'Cienkie', medium: 'Średnie', thick: 'Grube' }[garment.thickness] +
-                  ` · ${garment.warmth}/5`,
+                  (garment.category === 'accessories'
+                    ? ' · ciepło nie dotyczy'
+                    : ` · ${garment.warmth}/5`),
               },
               {
                 icon: CalendarDays,

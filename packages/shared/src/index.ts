@@ -1,3 +1,5 @@
+export * from './warmth.js';
+import { deriveWarmth } from './warmth.js';
 export * from './locale.js';
 import { z } from 'zod';
 export const uuid = z.uuid();
@@ -63,6 +65,7 @@ export const garmentInput = z.object({
   material_source: z.enum(['user', 'label', 'unknown']).default('unknown'),
   seasons: z.array(z.enum(seasons)).max(4).default([]),
   warmth: z.number().int().min(1).max(5).default(3),
+  warmth_manual: z.boolean().optional(),
   thickness: z.enum(['thin', 'medium', 'thick']).default('medium'),
   style: short.default(''),
   occasions: z.array(z.enum(occasions)).max(6).default([]),
@@ -98,6 +101,7 @@ export const imageSchema = z.object({
 export const garmentSchema = garmentInput.extend({
   name: short.min(1),
   name_source: z.enum(['temporary', 'ai', 'manual']).default('manual'),
+  warmth_manual: z.boolean().default(false),
   id: uuid,
   owner_id: uuid,
   created_at: z.string(),
@@ -283,6 +287,14 @@ export function localizeAnalysis(input: AiAnalysis): AiAnalysis {
   if (s.name || s.category)
     s.name = polishGarmentName({ ...input.suggestions, primary_color: s.primary_color });
   if (s.subcategory) s.subcategory = polishSubcategory(s.subcategory);
+  if (result.source === 'photo') {
+    const warmth = deriveWarmth(
+      s.category ?? '',
+      input.suggestions.subcategory || input.suggestions.name,
+    );
+    if (warmth !== undefined) s.warmth = warmth;
+    else delete s.warmth;
+  }
   result.uncertainties = result.uncertainties.map(localizedAiText);
   if (result.care) result.care = result.care.map(localizedAiText);
   // Brand, product identifiers, material read from label, and verbatim OCR text are preserved.
