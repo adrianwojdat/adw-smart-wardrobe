@@ -1,3 +1,4 @@
+export * from './locale.js';
 import { z } from 'zod';
 export const uuid = z.uuid();
 export const cleanliness = ['clean', 'worn', 'dirty', 'washing', 'drying', 'ironing'] as const;
@@ -51,7 +52,7 @@ export const wardrobeInput = z.object({
 });
 export const garmentInput = z.object({
   wardrobe_id: uuid,
-  name: short.min(1, 'Podaj nazwę'),
+  name: short.optional(),
   category: z.enum(categories),
   subcategory: short.default(''),
   brand: short.default(''),
@@ -80,8 +81,23 @@ export const imageSchema = z.object({
   width: z.number(),
   height: z.number(),
   created_at: z.string(),
+  original_path: z.string(),
+  original_mime: z.string(),
+  cutout_path: z.string().nullable(),
+  catalog_path: z.string().nullable(),
+  thumbnail_path: z.string().nullable(),
+  revision: z.number(),
+  rotation: z.number().nullable(),
+  process_status: z.enum(['queued', 'processing', 'completed', 'failed', 'cancelled']),
+  stage: z.string(),
+  pipeline_version: z.string().nullable(),
+  processing_error: z.string().nullable(),
+  orientation: z.unknown().nullable(),
+  analysis: z.unknown().nullable(),
 });
 export const garmentSchema = garmentInput.extend({
+  name: short.min(1),
+  name_source: z.enum(['temporary', 'ai', 'manual']).default('manual'),
   id: uuid,
   owner_id: uuid,
   created_at: z.string(),
@@ -102,8 +118,8 @@ export const jobSchema = z.object({
   garment_id: uuid,
   image_id: uuid,
   requested_by: uuid,
-  type: z.literal('process_image'),
-  status: z.enum(['queued', 'processing', 'completed', 'failed']),
+  type: z.enum(['process_image', 'analyze_garment', 'analyze_label']),
+  status: z.enum(['queued', 'processing', 'completed', 'failed', 'cancelled']),
   progress: z.number(),
   attempts: z.number(),
   error: z.string().nullable(),
@@ -134,11 +150,12 @@ export const outfitSchema = outfitInput.extend({
   created_at: z.string(),
 });
 export type Outfit = z.infer<typeof outfitSchema>;
-/** Deterministic suggestions only; every ID comes from eligible owned garments. */
+/** Diverse rule-based suggestions; every ID comes from eligible owned garments. */
 export function recommend(
   garments: Garment[],
   occasion: (typeof occasions)[number],
   temperature = 18,
+  random: () => number = Math.random,
 ): Garment[][] {
   const eligible = garments.filter(
     (g) =>
@@ -147,15 +164,43 @@ export function recommend(
       (!g.occasions.length || g.occasions.includes(occasion)) &&
       (temperature >= 12 || g.warmth >= 2),
   );
+  function shuffled<T>(items: T[]): T[] {
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [items[i], items[j]] = [items[j]!, items[i]!];
+    }
+    return items;
+  }
   const tops = eligible.filter((g) => g.category === 'tops');
   const bottoms = eligible.filter((g) => g.category === 'bottoms');
-  const dresses = eligible.filter((g) => g.category === 'dresses');
-  const shoes = eligible.filter((g) => g.category === 'shoes');
-  const bases: Garment[][] = dresses.map((g) => [g]);
+  const bases: Garment[][] = eligible.filter((g) => g.category === 'dresses').map((g) => [g]);
   for (const top of tops) for (const bottom of bottoms) bases.push([top, bottom]);
-  return bases.slice(0, 6).map((base, i) => {
+  shuffled(bases);
+  const usage = new Map<string, number>();
+  const selected: Garment[][] = [];
+  while (bases.length && selected.length < 6) {
+    let best = 0,
+      bestMax = Infinity,
+      bestAverage = Infinity;
+    for (let i = 0; i < bases.length; i++) {
+      const counts = bases[i]!.map((g) => usage.get(g.id) ?? 0);
+      const max = Math.max(...counts);
+      const average = counts.reduce((sum, n) => sum + n, 0) / counts.length;
+      if (max < bestMax || (max === bestMax && average < bestAverage)) {
+        best = i;
+        bestMax = max;
+        bestAverage = average;
+      }
+    }
+    const [base] = bases.splice(best, 1);
+    selected.push(base!);
+    for (const g of base!) usage.set(g.id, (usage.get(g.id) ?? 0) + 1);
+  }
+  const shoes = shuffled(eligible.filter((g) => g.category === 'shoes'));
+  const coats = shuffled(eligible.filter((g) => g.category === 'outerwear'));
+  return selected.map((base, i) => {
     const shoe = shoes[i % shoes.length];
-    const coat = eligible.find((g) => g.category === 'outerwear');
+    const coat = coats[i % coats.length];
     return [...base, ...(shoe ? [shoe] : []), ...(temperature < 16 && coat ? [coat] : [])];
   });
 }
@@ -173,4 +218,85 @@ export interface ApiContract {
     GET: { response: Garment[] };
     POST: { body: GarmentInput; response: Garment };
   };
+}
+
+export const aiAnalysisSchema = z.object({
+  auto_applied: z.boolean().optional(),
+  source: z.enum(['photo', 'label']),
+  confidence: z.number().min(0).max(1),
+  uncertainties: z.array(z.string().max(500)).max(30),
+  text: z.string().max(8000).optional(),
+  suggestions: z.object({
+    name: garmentInput.shape.name.optional(),
+    category: garmentInput.shape.category.optional(),
+    subcategory: garmentInput.shape.subcategory.removeDefault().optional(),
+    primary_color: garmentInput.shape.primary_color.removeDefault().optional(),
+    secondary_color: garmentInput.shape.secondary_color.removeDefault().optional(),
+    brand: garmentInput.shape.brand.removeDefault().optional(),
+    size: garmentInput.shape.size.removeDefault().optional(),
+    material: garmentInput.shape.material.removeDefault().optional(),
+    material_source: garmentInput.shape.material_source.removeDefault().optional(),
+    seasons: garmentInput.shape.seasons.removeDefault().optional(),
+    style: garmentInput.shape.style.removeDefault().optional(),
+    occasions: garmentInput.shape.occasions.removeDefault().optional(),
+    thickness: garmentInput.shape.thickness.removeDefault().optional(),
+    warmth: garmentInput.shape.warmth.removeDefault().optional(),
+  }),
+  care: z.array(z.string().max(500)).max(30).optional(),
+  classifier: z
+    .object({
+      provider: z.literal('fashion-siglip'),
+      model: z.string(),
+      elapsed_ms: z.number().nonnegative(),
+      category: z
+        .array(z.object({ label: z.string(), label_pl: z.string(), score: z.number().finite() }))
+        .max(5),
+      color: z
+        .array(z.object({ label: z.string(), label_pl: z.string(), score: z.number().finite() }))
+        .max(5),
+      pattern: z
+        .array(z.object({ label: z.string(), label_pl: z.string(), score: z.number().finite() }))
+        .max(5),
+    })
+    .optional(),
+});
+export type AiAnalysis = z.infer<typeof aiAnalysisSchema>;
+export const orientationSchema = z.object({
+  rotation: z.enum(['0', '90', '180', '270']),
+  confidence: z.number().min(0).max(1),
+  reason: z.string().max(500),
+});
+
+import {
+  polishColor,
+  polishGarmentName,
+  polishSubcategory,
+  polishStyle,
+  localizedAiText,
+} from './locale.js';
+export function localizeAnalysis(input: AiAnalysis): AiAnalysis {
+  const result = structuredClone(input),
+    s = result.suggestions;
+  if (s.primary_color) s.primary_color = polishColor(s.primary_color);
+  if (s.secondary_color) s.secondary_color = polishColor(s.secondary_color);
+  if (s.style) s.style = polishStyle(s.style);
+  if (s.name || s.category)
+    s.name = polishGarmentName({ ...input.suggestions, primary_color: s.primary_color });
+  if (s.subcategory) s.subcategory = polishSubcategory(s.subcategory);
+  result.uncertainties = result.uncertainties.map(localizedAiText);
+  if (result.care) result.care = result.care.map(localizedAiText);
+  // Brand, product identifiers, material read from label, and verbatim OCR text are preserved.
+  return result;
+}
+export function aiValueLabel(field: string, value: unknown): string {
+  const dictionaries: Record<string, Record<string, string>> = {
+    category: categoryLabels,
+    seasons: seasonLabels,
+    occasions: occasionLabels,
+    thickness: { thin: 'Cienkie', medium: 'Średnie', thick: 'Grube' },
+    material_source: { user: 'Wpisane ręcznie', label: 'Z metki', unknown: 'Nieznane' },
+  };
+  return Array.isArray(value)
+    ? value.map((v) => aiValueLabel(field, v)).join(', ')
+    : (dictionaries[field]?.[String(value)] ?? String(value));
 }

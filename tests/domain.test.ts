@@ -28,6 +28,47 @@ describe('owned wardrobe recommendations', () => {
     expect(recommend([top, { ...bottom, archived: true }], 'everyday')).toEqual([]);
     expect(recommend([{ ...top, occasions: ['office'] }, bottom], 'date')).toEqual([]);
   });
+  const sample = (i: number, category: 'tops' | 'bottoms' | 'shoes' | 'dresses') =>
+    garment(`00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, category);
+  const seeded = (seed: number) => () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  it('uses six distinct tops and bottoms when available, with varied requests', () => {
+    const clothes = [
+      ...Array.from({ length: 8 }, (_, i) => sample(i + 1, 'tops')),
+      ...Array.from({ length: 8 }, (_, i) => sample(i + 20, 'bottoms')),
+    ];
+    const first = recommend(clothes, 'everyday', 18, seeded(1));
+    expect(first).toHaveLength(6);
+    for (const category of ['tops', 'bottoms'])
+      expect(
+        new Set(
+          first
+            .flat()
+            .filter((g) => g.category === category)
+            .map((g) => g.id),
+        ).size,
+      ).toBe(6);
+    expect(recommend(clothes, 'everyday', 18, seeded(2))).not.toEqual(first);
+  });
+  it('balances scarce garments and never repeats a complete combination', () => {
+    const clothes = [
+      sample(1, 'tops'),
+      sample(2, 'tops'),
+      ...Array.from({ length: 6 }, (_, i) => sample(i + 20, 'bottoms')),
+    ];
+    const result = recommend(clothes, 'everyday', 18, seeded(3));
+    expect(result).toHaveLength(6);
+    expect(
+      new Set(
+        result
+          .flat()
+          .filter((g) => g.category === 'bottoms')
+          .map((g) => g.id),
+      ).size,
+    ).toBe(6);
+    for (const top of clothes.slice(0, 2))
+      expect(result.filter((gs) => gs.some((g) => g.id === top.id))).toHaveLength(3);
+    expect(recommend([sample(1, 'tops'), sample(20, 'bottoms')], 'everyday')).toHaveLength(1);
+  });
   it('caps combinations and allows dresses without fabricated shoes', () => {
     const dress = garment('55dab414-e03e-4797-a160-9fef20800d42', 'dresses');
     expect(recommend([dress], 'everyday')).toEqual([[dress]]);
