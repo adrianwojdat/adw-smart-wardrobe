@@ -57,6 +57,7 @@ export const garmentInput = z.object({
   name: short.optional(),
   category: z.enum(categories),
   subcategory: short.default(''),
+  pattern: short.optional(),
   brand: short.default(''),
   size: short.default(''),
   primary_color: short.default(''),
@@ -74,6 +75,26 @@ export const garmentInput = z.object({
   archived: z.boolean().default(false),
   notes: z.string().trim().max(2000).default(''),
 });
+// PATCH must preserve absent keys: Zod defaults must not erase unrelated metadata.
+export const garmentPatch = garmentInput.partial().extend({
+  subcategory: garmentInput.shape.subcategory.removeDefault().optional(),
+  brand: garmentInput.shape.brand.removeDefault().optional(),
+  size: garmentInput.shape.size.removeDefault().optional(),
+  primary_color: garmentInput.shape.primary_color.removeDefault().optional(),
+  secondary_color: garmentInput.shape.secondary_color.removeDefault().optional(),
+  material: garmentInput.shape.material.removeDefault().optional(),
+  material_source: garmentInput.shape.material_source.removeDefault().optional(),
+  seasons: garmentInput.shape.seasons.removeDefault().optional(),
+  warmth: garmentInput.shape.warmth.removeDefault().optional(),
+  thickness: garmentInput.shape.thickness.removeDefault().optional(),
+  style: garmentInput.shape.style.removeDefault().optional(),
+  occasions: garmentInput.shape.occasions.removeDefault().optional(),
+  cleanliness: garmentInput.shape.cleanliness.removeDefault().optional(),
+  favorite: garmentInput.shape.favorite.removeDefault().optional(),
+  archived: garmentInput.shape.archived.removeDefault().optional(),
+  notes: garmentInput.shape.notes.removeDefault().optional(),
+});
+export const aiPreferencesSchema = z.object({ ai_overwrite_metadata: z.boolean() }).strict();
 export type GarmentInput = z.infer<typeof garmentInput>;
 export const imageSchema = z.object({
   id: uuid,
@@ -102,6 +123,7 @@ export const garmentSchema = garmentInput.extend({
   name: short.min(1),
   name_source: z.enum(['temporary', 'ai', 'manual']).default('manual'),
   warmth_manual: z.boolean().default(false),
+  pattern: short.default(''),
   id: uuid,
   owner_id: uuid,
   created_at: z.string(),
@@ -231,6 +253,7 @@ export const aiAnalysisSchema = z.object({
   uncertainties: z.array(z.string().max(500)).max(30),
   text: z.string().max(8000).optional(),
   suggestions: z.object({
+    pattern: garmentInput.shape.pattern,
     name: garmentInput.shape.name.optional(),
     category: garmentInput.shape.category.optional(),
     subcategory: garmentInput.shape.subcategory.removeDefault().optional(),

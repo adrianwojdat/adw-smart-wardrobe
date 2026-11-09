@@ -20,6 +20,9 @@ import {
   loginSchema,
   wardrobeInput,
   garmentInput,
+  garmentPatch,
+  deriveWarmth,
+  aiPreferencesSchema,
   uuid,
   occasions,
   outfitInput,
@@ -261,6 +264,27 @@ export async function buildApp(config: Config) {
       return { ok: true };
     },
   );
+  app.get('/api/preferences/ai', async (req, reply) => {
+    const { sb, user } = await session.load(req, reply);
+    return checked(
+      await sb.from('profiles').select('ai_overwrite_metadata').eq('id', user.id).single(),
+    );
+  });
+  app.patch(
+    '/api/preferences/ai',
+    { schema: { body: aiPreferencesSchema } },
+    async (req, reply) => {
+      const { sb, user } = await session.load(req, reply);
+      return checked(
+        await sb
+          .from('profiles')
+          .update(req.body)
+          .eq('id', user.id)
+          .select('ai_overwrite_metadata')
+          .single(),
+      );
+    },
+  );
   app.patch(
     '/api/profile',
     { schema: { body: z.object({ name: z.string().trim().min(1).max(120) }) } },
@@ -486,7 +510,7 @@ export async function buildApp(config: Config) {
   });
   app.patch(
     '/api/garments/:id',
-    { schema: { params: idParams, body: garmentInput.partial() } },
+    { schema: { params: idParams, body: garmentPatch } },
     async (req, reply) => {
       const { sb } = await session.load(req, reply);
       return checked(
@@ -691,9 +715,26 @@ export async function buildApp(config: Config) {
         await sb.from('garment_images').select('*').eq('id', req.params.id).single(),
       );
       const analysis = localizeAnalysis(aiAnalysisSchema.parse(img.analysis));
-      const patch = Object.fromEntries(
+      const patch: Record<string, unknown> = Object.fromEntries(
         Object.entries(analysis.suggestions).filter(([field]) => req.body.fields.includes(field)),
       );
+      if ('warmth' in patch) patch.warmth_manual = false;
+      else if ('category' in patch || 'subcategory' in patch) {
+        const current = checked(
+          await sb
+            .from('garments')
+            .select('category,subcategory,warmth_manual')
+            .eq('id', img.garment_id)
+            .single(),
+        );
+        if (!current.warmth_manual) {
+          const warmth = deriveWarmth(
+            String(patch.category ?? current.category),
+            String(patch.subcategory ?? current.subcategory),
+          );
+          if (warmth !== undefined) patch.warmth = warmth;
+        }
+      }
       return checked(
         await sb
           .from('garments')

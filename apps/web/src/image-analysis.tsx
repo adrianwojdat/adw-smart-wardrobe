@@ -12,6 +12,7 @@ import { Button } from './components/ui/button';
 import { ErrorNotice, useWardrobe } from './context';
 const labels: Record<string, string> = {
   name: 'Nazwa',
+  pattern: 'Wzór',
   category: 'Kategoria',
   subcategory: 'Podkategoria',
   primary_color: 'Kolor',
@@ -44,8 +45,7 @@ export function ImageAnalysis({ image, garmentId }: { image: GarmentImage; garme
       </h3>
       {result.auto_applied && (
         <p role="status" className="source-note">
-          Pierwsza klasyfikacja została zapisana automatycznie. Możesz poprawić dane w edycji
-          ubrania.
+          Parametry analizy zostały zapisane automatycznie. Możesz poprawić dane w edycji ubrania.
         </p>
       )}
       <p className="source-note">

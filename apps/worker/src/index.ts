@@ -198,7 +198,7 @@ const aiWorker = new Worker(
   async (job) => {
     const id = z.uuid().parse(job.data.id);
     const found = await pool.query(
-      "select j.*,i.original_path,i.path,i.rotation,i.revision as image_revision from public.jobs j join public.garment_images i on i.id=j.image_id and i.garment_id=j.garment_id and i.wardrobe_id=j.wardrobe_id where j.id=$1 and j.status in ('queued','processing')",
+      "select j.*,i.original_path,i.path,i.rotation,i.revision as image_revision,g.updated_at::text as garment_version from public.jobs j join public.garment_images i on i.id=j.image_id and i.garment_id=j.garment_id and i.wardrobe_id=j.wardrobe_id join public.garments g on g.id=j.garment_id where j.id=$1 and j.status in ('queued','processing')",
       [id],
     );
     const row = found.rows[0];
@@ -248,10 +248,16 @@ const aiWorker = new Worker(
           : await analyze(image, row.type === 'analyze_label', cancellation.signal);
       await commitJob(pool, id, async (client) => {
         if (row.type === 'analyze_garment') {
-          const applied = await client.query(
-            'select private.apply_initial_classification($1,$2) as applied',
-            [id, result.suggestions],
+          const automatic = await client.query(
+            'select private.apply_ai_metadata($1,$2,$3) as applied',
+            [id, result.suggestions, row.garment_version],
           );
+          const applied = automatic.rows[0]?.applied
+            ? automatic
+            : await client.query('select private.apply_initial_classification($1,$2) as applied', [
+                id,
+                result.suggestions,
+              ]);
           result.auto_applied = applied.rows[0]?.applied === true;
         }
         if (row.type === 'analyze_garment' && result.suggestions.name && !result.auto_applied) {

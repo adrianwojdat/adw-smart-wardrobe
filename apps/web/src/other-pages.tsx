@@ -23,6 +23,7 @@ import {
   Shirt,
 } from 'lucide-react';
 import {
+  aiPreferencesSchema,
   cleanliness,
   cleanlinessLabels,
   occasions,
@@ -617,6 +618,14 @@ export function Family() {
 export function Settings() {
   const me = useMe();
   const activity = useAnalysisActivity();
+  const [savingAi, setSavingAi] = useState(false);
+  const [pendingAi, setPendingAi] = useState<boolean>();
+  const [aiError, setAiError] = useState<unknown>();
+  const preferences = useQuery({
+    queryKey: ['ai-preferences', me.data?.id],
+    queryFn: () => request('/api/preferences/ai', aiPreferencesSchema),
+    enabled: !!me.data,
+  });
   const cache = useQueryClient();
   const { notify, wardrobes, choose } = useWardrobe();
   const [deleting, setDeleting] = useState<(typeof wardrobes)[number]>();
@@ -644,9 +653,9 @@ export function Settings() {
       <section className="form-panel mb-6">
         <h2>Twoje garderoby</h2>
         <p className="source-note">
-          Analiza AI uwzględni zapisane obroty zdjęć. Wyniki pojawią się w szczegółach ubrań jako
-          sugestie do zatwierdzenia. Nie nadpisze Twoich obecnych danych ani nie powtórzy usuwania
-          tła.
+          Analiza AI uwzględni zapisane obroty zdjęć. Zapis wyników zależy od ustawienia
+          automatyzacji AI poniżej. Bez automatyzacji pozostaną sugestie do zatwierdzenia. Nie
+          powtórzy usuwania tła.
         </p>
         {analysisMessage && (
           <p role="status" className="source-note">
@@ -776,6 +785,47 @@ export function Settings() {
         </div>
         {!!error && <ErrorNotice error={error} />}
       </Dialog>
+      <section className="form-panel mb-6">
+        <h2>Automatyzacja AI</h2>
+        <label className="flex items-start gap-3 mt-4">
+          <input
+            type="checkbox"
+            style={{ width: 20, minHeight: 20 }}
+            checked={pendingAi ?? preferences.data?.ai_overwrite_metadata ?? false}
+            disabled={savingAi || preferences.isPending || !!preferences.error}
+            onChange={async (e) => {
+              const checked = e.target.checked;
+              setSavingAi(true);
+              setPendingAi(checked);
+              setAiError(undefined);
+              try {
+                const saved = await request('/api/preferences/ai', aiPreferencesSchema, 'PATCH', {
+                  ai_overwrite_metadata: checked,
+                });
+                cache.setQueryData(['ai-preferences', me.data?.id], saved);
+                notify('Zapisano ustawienie automatyzacji AI.');
+              } catch (e) {
+                setAiError(e);
+              } finally {
+                setSavingAi(false);
+                setPendingAi(undefined);
+              }
+            }}
+          />
+          <span>Pozwalaj AI na nadpisywanie metadanych ubrań</span>
+        </label>
+        <p className="source-note">
+          Automatycznie zapisuj przewidywane parametry po analizie AI, bez ręcznego zatwierdzania
+          każdego ubrania.
+        </p>
+        <p className="source-note">
+          Dotyczy również ponownej analizy i ręcznie poprawionych parametrów. Ręczne nazwy i notatki
+          pozostaną zachowane. Włączenie opcji nie uruchamia analizy.
+        </p>
+        {savingAi && <p role="status">Zapisywanie ustawienia…</p>}
+        {preferences.error && <ErrorNotice error={preferences.error} />}
+        {!!aiError && <ErrorNotice error={aiError} />}
+      </section>
       <div className="settings-grid">
         <section className="form-panel">
           <h2>Twój profil</h2>

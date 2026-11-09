@@ -293,6 +293,10 @@ function GarmentForm({ existing }: { existing?: Garment }) {
             </label>
           </div>
           <label>
+            Wzór
+            <input {...register('pattern')} placeholder="np. Gładki, paski, krata" />
+          </label>
+          <label>
             Skład materiału
             <textarea
               {...register('material')}

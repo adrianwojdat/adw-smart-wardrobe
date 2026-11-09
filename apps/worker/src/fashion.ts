@@ -113,6 +113,7 @@ export async function analyzeFashion(
         'Sprawdź kategorię, kolor i wzór. Podobieństwo modelu nie jest procentem pewności.',
       ],
       suggestions: {
+        pattern: found.pattern[0]!.label_pl,
         category: categories[found.category[0]!.label] ?? 'tops',
         subcategory: found.category[0]!.label_pl,
         primary_color: found.color[0]!.label_pl,
