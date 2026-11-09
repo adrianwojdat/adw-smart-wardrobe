@@ -1,3 +1,5 @@
+export * from './accessories.js';
+import { recommendBelt } from './accessories.js';
 export * from './warmth.js';
 import { deriveWarmth } from './warmth.js';
 export * from './locale.js';
@@ -188,7 +190,7 @@ export function recommend(
       !g.archived &&
       g.cleanliness === 'clean' &&
       (!g.occasions.length || g.occasions.includes(occasion)) &&
-      (temperature >= 12 || g.warmth >= 2),
+      (g.category === 'accessories' || temperature >= 12 || g.warmth >= 2),
   );
   function shuffled<T>(items: T[]): T[] {
     for (let i = items.length - 1; i > 0; i--) {
@@ -227,7 +229,9 @@ export function recommend(
   return selected.map((base, i) => {
     const shoe = shoes[i % shoes.length];
     const coat = coats[i % coats.length];
-    return [...base, ...(shoe ? [shoe] : []), ...(temperature < 16 && coat ? [coat] : [])];
+    const outfit = [...base, ...(shoe ? [shoe] : []), ...(temperature < 16 && coat ? [coat] : [])];
+    const belt = recommendBelt(outfit, eligible);
+    return belt ? [...outfit, belt] : outfit;
   });
 }
 export interface ApiContract {
