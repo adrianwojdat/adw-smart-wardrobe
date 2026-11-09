@@ -1,3 +1,4 @@
+import { allowedOrigins } from './origins.js';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
@@ -24,9 +25,13 @@ import {
   outfitInput,
   recommend,
   garmentSchema,
+  aiAnalysisSchema,
+  localizeAnalysis,
 } from '@wardrobe/shared';
 import { sessions, HttpError, hash } from './session.js';
 import type { Config } from './config.js';
+import { registerQueueBoard } from './queue-board.js';
+import { registerQueueControls } from './queue-controls.js';
 const idParams = z.object({ id: uuid });
 function checked<T>(result: { data: T; error: unknown }): NonNullable<T> {
   if (result.error) {
@@ -57,6 +62,7 @@ export async function buildApp(config: Config) {
     trustProxy: (_address, hop) => hop < 1,
     disableRequestLogging: true,
   }).withTypeProvider<ZodTypeProvider>();
+  const origins = allowedOrigins(config.APP_ORIGIN, config.APP_ADDITIONAL_ORIGINS);
   const session = sessions(config);
   session.pool.on('error', () =>
     app.log.error('Session database connection lost; pool will reconnect'),
@@ -83,7 +89,7 @@ export async function buildApp(config: Config) {
   app.addHook('onRequest', async (req, reply) => {
     reply.header('Cache-Control', 'no-store, private');
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-      if (req.headers.origin !== config.APP_ORIGIN)
+      if (!req.headers.origin || !origins.has(req.headers.origin))
         throw new HttpError(403, 'Nieprawidłowe źródło żądania.');
       const expected = req.cookies.sw_csrf,
         provided = req.headers['x-csrf-token'];
@@ -123,6 +129,12 @@ export async function buildApp(config: Config) {
     return { token };
   });
   app.get('/api/config', async () => ({
+    manualAnalysis:
+      (
+        await session.pool.query(
+          "select to_regprocedure('public.reanalyze_image(uuid)') is not null as available",
+        )
+      ).rows[0]?.available === true,
     smtpConfigured: !!config.SMTP_ENABLED,
     emailConfirmation: config.EMAIL_AUTOCONFIRM !== 'true',
   }));
@@ -281,6 +293,54 @@ export async function buildApp(config: Config) {
       );
     },
   );
+  app.get('/api/analysis/activity', async (req, reply) => {
+    const { sb } = await session.load(req, reply);
+    const totals = new Map<
+      string,
+      { wardrobe_id: string; image_id: string; queued: number; processing: number }
+    >();
+    let cursor: string | undefined;
+    for (;;) {
+      let query = sb
+        .from('jobs')
+        .select('id,wardrobe_id,image_id,status')
+        .in('type', ['analyze_garment', 'analyze_label'])
+        .in('status', ['queued', 'processing'])
+        .order('id')
+        .limit(1000);
+      if (cursor) query = query.gt('id', cursor);
+      const rows = checked(await query);
+      for (const row of rows) {
+        const key = row.image_id;
+        const total = totals.get(key) ?? {
+          wardrobe_id: row.wardrobe_id,
+          image_id: row.image_id,
+          queued: 0,
+          processing: 0,
+        };
+        if (row.status === 'queued') total.queued++;
+        else total.processing++;
+        totals.set(key, total);
+      }
+      if (rows.length < 1000) break;
+      cursor = rows.at(-1)!.id;
+    }
+    return [...totals.values()];
+  });
+  app.post('/api/wardrobes/:id/analyze', { schema: { params: idParams } }, async (req, reply) => {
+    const { sb } = await session.load(req, reply);
+    return checked(await sb.rpc('reanalyze_wardrobe', { wardrobe: req.params.id }));
+  });
+  app.delete('/api/wardrobes/:id', { schema: { params: idParams } }, async (req, reply) => {
+    const { sb } = await session.load(req, reply);
+    const { error } = await sb.rpc('delete_wardrobe', { wardrobe: req.params.id });
+    if (error)
+      throw new HttpError(
+        error.code === '42501' ? 403 : 400,
+        'Nie można usunąć garderoby. Tylko właściciel może ją usunąć.',
+      );
+    return { ok: true };
+  });
   app.get('/api/wardrobes/:id/members', { schema: { params: idParams } }, async (req, reply) => {
     const { sb } = await session.load(req, reply);
     return checked(await sb.from('wardrobe_members').select('*').eq('wardrobe_id', req.params.id));
@@ -395,12 +455,27 @@ export async function buildApp(config: Config) {
   );
   app.post(
     '/api/garments',
-    { schema: { body: garmentInput, tags: ['garments'] } },
+    { schema: { body: garmentInput.extend({ id: uuid.optional() }), tags: ['garments'] } },
     async (req, reply) => {
-      const { sb } = await session.load(req, reply);
-      return checked(
-        await sb.from('garments').insert(req.body).select('*,garment_images(*)').single(),
-      );
+      const { sb, user } = await session.load(req, reply);
+      const result = await sb
+        .from('garments')
+        .insert(req.body)
+        .select('*,garment_images(*)')
+        .single();
+      if (result.error?.code === '23505' && req.body.id) {
+        const existing = checked(
+          await sb
+            .from('garments')
+            .select('*,garment_images(*)')
+            .eq('id', req.body.id)
+            .eq('wardrobe_id', req.body.wardrobe_id)
+            .single(),
+        );
+        if (existing.owner_id !== user.id) throw new HttpError(403, 'Brak uprawnień.');
+        return existing;
+      }
+      return checked(result);
     },
   );
   app.get('/api/garments/:id', { schema: { params: idParams } }, async (req, reply) => {
@@ -417,7 +492,10 @@ export async function buildApp(config: Config) {
       return checked(
         await sb
           .from('garments')
-          .update(req.body)
+          .update({
+            ...req.body,
+            ...(req.body.name !== undefined ? { name_source: 'manual' } : {}),
+          })
           .eq('id', req.params.id)
           .select('*,garment_images(*)')
           .single(),
@@ -445,7 +523,10 @@ export async function buildApp(config: Config) {
     {
       schema: {
         params: idParams,
-        querystring: z.object({ kind: z.enum(['garment', 'label']).default('garment') }),
+        querystring: z.object({
+          kind: z.enum(['garment', 'label']).default('garment'),
+          upload_id: uuid.optional(),
+        }),
       },
     },
     async (req, reply) => {
@@ -456,8 +537,10 @@ export async function buildApp(config: Config) {
       if (!checked(await sb.rpc('has_wardrobe_access', { w: garment.wardrobe_id, editing: true })))
         throw new HttpError(403, 'Brak uprawnień do edycji.');
       const images = checked(
-        await sb.from('garment_images').select('id').eq('garment_id', garment.id),
+        await sb.from('garment_images').select('*').eq('garment_id', garment.id),
       );
+      const previous = images.find((image) => image.id === req.query.upload_id);
+      if (previous) return previous;
       if (images.length >= 12) throw new HttpError(400, 'Maksymalnie 12 zdjęć na ubranie.');
       const file = await req.file();
       if (!file) throw new HttpError(400, 'Wybierz zdjęcie.');
@@ -468,70 +551,159 @@ export async function buildApp(config: Config) {
       let width: number;
       let height: number;
       try {
-        const source = sharp(input, { limitInputPixels: 40_000_000, animated: false });
-        const meta = await source.metadata();
-        if (!['jpeg', 'png', 'webp'].includes(meta.format ?? '') || (meta.pages ?? 1) > 1)
+        const meta = await sharp(input, {
+          limitInputPixels: 40_000_000,
+          animated: false,
+        }).metadata();
+        if (
+          !['jpeg', 'png', 'webp'].includes(meta.format ?? '') ||
+          (meta.pages ?? 1) > 1 ||
+          !meta.width ||
+          !meta.height ||
+          meta.width * meta.height > 40_000_000
+        )
           throw Error('format');
-        const result = await source
-          .rotate()
-          .resize({ width: 2200, height: 2200, fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 86 })
-          .toBuffer({ resolveWithObject: true });
-        output = result.data;
-        width = result.info.width;
-        height = result.info.height;
+        output = input;
+        width = meta.width;
+        height = meta.height;
       } catch {
         throw new HttpError(400, 'Nieprawidłowy obraz lub zbyt duża rozdzielczość (maks. 40 MP).');
       }
-      const path = `${garment.wardrobe_id}/${garment.id}/${randomBytes(16).toString('hex')}.webp`;
-      checked(
-        await sb.storage
-          .from('garments')
-          .upload(path, output, { contentType: 'image/webp', upsert: false }),
-      );
+      const path = `${garment.wardrobe_id}/${garment.id}/${req.query.upload_id ?? randomBytes(16).toString('hex')}.original`;
+      const stored = await sb.storage
+        .from('garments')
+        .upload(path, output, { contentType: file.mimetype, upsert: false });
+      if (stored.error && !(req.query.upload_id && stored.error.statusCode === '409'))
+        checked(stored);
       const inserted = await sb
         .from('garment_images')
         .insert({
+          ...(req.query.upload_id ? { id: req.query.upload_id } : {}),
           garment_id: garment.id,
           wardrobe_id: garment.wardrobe_id,
           path,
+          original_path: path,
+          original_mime: file.mimetype,
           kind: req.query.kind,
           width,
           height,
         })
         .select()
         .single();
+      if (inserted.error?.code === '23505' && req.query.upload_id) {
+        return checked(
+          await sb
+            .from('garment_images')
+            .select('*')
+            .eq('id', req.query.upload_id)
+            .eq('garment_id', garment.id)
+            .single(),
+        );
+      }
       if (inserted.error) {
+        if (req.query.upload_id)
+          throw new HttpError(400, 'Nie udało się zapisać zdjęcia. Ponów przesyłanie.');
         await sb.storage.from('garments').remove([path]);
         throw new HttpError(400, 'Nie udało się zapisać zdjęcia.');
       }
       const img = checked(inserted);
-      checked(
-        await sb
-          .from('jobs')
-          .insert({
-            wardrobe_id: garment.wardrobe_id,
-            garment_id: garment.id,
-            image_id: img.id,
-            type: 'process_image',
-          })
-          .select()
-          .single(),
-      );
       return img;
     },
   );
-  app.get('/api/images/:id', { schema: { params: idParams } }, async (req, reply) => {
+  app.get(
+    '/api/images/:id',
+    {
+      schema: {
+        params: idParams,
+        querystring: z.object({
+          variant: z.enum(['original', 'cutout', 'catalog', 'thumbnail']).default('catalog'),
+          v: z.string().optional(),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { sb } = await session.load(req, reply);
+      const img = checked(
+        await sb.from('garment_images').select('*').eq('id', req.params.id).single(),
+      );
+      const chosen = req.query.variant;
+      const variantPath = chosen === 'original' ? null : img[chosen + '_path'];
+      const path = variantPath ?? img.original_path;
+      const blob = checked(await sb.storage.from('garments').download(path));
+      return reply
+        .header(
+          'Content-Type',
+          variantPath ? (chosen === 'cutout' ? 'image/png' : 'image/webp') : img.original_mime,
+        )
+        .header('Content-Disposition', 'inline')
+        .send(Buffer.from(await blob.arrayBuffer()));
+    },
+  );
+  app.post(
+    '/api/images/:id/reprocess',
+    {
+      schema: {
+        params: idParams,
+        body: z.object({
+          rotation: z
+            .union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)])
+            .optional(),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { sb } = await session.load(req, reply);
+      return checked(
+        await sb.rpc('reprocess_image', { image: req.params.id, angle: req.body.rotation ?? null }),
+      );
+    },
+  );
+  app.post('/api/images/:id/analyze', { schema: { params: idParams } }, async (req, reply) => {
     const { sb } = await session.load(req, reply);
-    const img = checked(
-      await sb.from('garment_images').select('path').eq('id', req.params.id).single(),
-    );
-    const blob = checked(await sb.storage.from('garments').download(img.path));
-    return reply
-      .header('Content-Type', 'image/webp')
-      .header('Content-Disposition', 'inline')
-      .send(Buffer.from(await blob.arrayBuffer()));
+    return checked(await sb.rpc('reanalyze_image', { image: req.params.id }));
   });
+  app.post(
+    '/api/images/:id/rotate',
+    { schema: { params: idParams, body: z.object({ direction: z.enum(['left', 'right']) }) } },
+    async (req, reply) => {
+      const { sb } = await session.load(req, reply);
+      const img = checked(
+        await sb.from('garment_images').select('*').eq('id', req.params.id).single(),
+      );
+      const current =
+        img.rotation ?? (img.orientation as { applied?: number } | null)?.applied ?? 0;
+      return checked(
+        await sb.rpc('reprocess_image', {
+          image: img.id,
+          angle: (current + (req.body.direction === 'right' ? 90 : 270)) % 360,
+        }),
+      );
+    },
+  );
+  app.post(
+    '/api/images/:id/suggestions/apply',
+    {
+      schema: { params: idParams, body: z.object({ fields: z.array(z.string()).min(1).max(16) }) },
+    },
+    async (req, reply) => {
+      const { sb } = await session.load(req, reply);
+      const img = checked(
+        await sb.from('garment_images').select('*').eq('id', req.params.id).single(),
+      );
+      const analysis = localizeAnalysis(aiAnalysisSchema.parse(img.analysis));
+      const patch = Object.fromEntries(
+        Object.entries(analysis.suggestions).filter(([field]) => req.body.fields.includes(field)),
+      );
+      return checked(
+        await sb
+          .from('garments')
+          .update({ ...patch, ...('name' in patch ? { name_source: 'manual' } : {}) })
+          .eq('id', img.garment_id)
+          .select('*,garment_images(*)')
+          .single(),
+      );
+    },
+  );
   app.delete('/api/images/:id', { schema: { params: idParams } }, async (req, reply) => {
     const { sb } = await session.load(req, reply);
     const img = checked(
@@ -638,6 +810,24 @@ export async function buildApp(config: Config) {
         .limit(100),
     );
   });
+  const queueAdmins = (config.QUEUE_ADMIN_USER_IDS ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (queueAdmins.length && config.REDIS_URL) {
+    queueAdmins.forEach((id) => uuid.parse(id));
+    const queues = await registerQueueBoard(
+      app,
+      config.REDIS_URL,
+      queueAdmins,
+      async (req, reply) => (await session.load(req, reply)).user.id,
+    );
+    await registerQueueControls(app, queues, session.pool, async (req, reply) => {
+      const { user } = await session.load(req, reply);
+      if (!queueAdmins.includes(user.id))
+        throw new HttpError(403, 'Panel jest dostępny tylko dla administratora.');
+    });
+  }
   app.addHook('onClose', async () => session.close());
   return app;
 }
