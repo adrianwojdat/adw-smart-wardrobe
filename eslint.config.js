@@ -6,6 +6,8 @@ export default ts.config(
   {
     ignores: [
       '**/dist/**',
+      'investigation/**',
+      'data/**',
       '**/node_modules/**',
       'infra/supabase/**',
       'playwright-report/**',
