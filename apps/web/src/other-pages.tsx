@@ -10,6 +10,7 @@ import { flexRender } from '@tanstack/react-table';
 import { z } from 'zod';
 import {
   Heart,
+  LoaderCircle,
   Sparkles,
   ArrowUpRight,
   Plus,
@@ -33,6 +34,8 @@ import { api, request } from './api';
 import { useWardrobe, useMe, Empty, Loading, ErrorNotice } from './context';
 import { useGarments, PageHeading, GarmentPhoto, AddButton } from './catalog';
 import { Button } from './components/ui/button';
+import { Dialog } from './components/ui/dialog';
+import { useAnalysisActivity } from './analysis-activity';
 export function OutfitPage({ saved = false }: { saved?: boolean }) {
   const { wardrobe, notify } = useWardrobe();
   const garments = useGarments();
@@ -40,6 +43,8 @@ export function OutfitPage({ saved = false }: { saved?: boolean }) {
   const [occasion, setOccasion] = useState<OutfitInput['occasion']>('everyday');
   const [temperature, setTemperature] = useState(18);
   const [generated, setGenerated] = useState<Garment[][]>([]);
+  const [searchedFor, setSearchedFor] = useState('');
+  const searchKey = `${wardrobe?.id}:${occasion}:${temperature}`;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
   const savedQuery = useQuery({ queryKey: ['outfits'], queryFn: api.outfits, enabled: saved });
@@ -49,6 +54,7 @@ export function OutfitPage({ saved = false }: { saved?: boolean }) {
     setError(undefined);
     try {
       setGenerated((await api.recommendations(wardrobe.id, occasion, temperature)).outfits);
+      setSearchedFor(searchKey);
     } catch (e) {
       setError(e);
     } finally {
@@ -197,12 +203,18 @@ export function OutfitPage({ saved = false }: { saved?: boolean }) {
       ) : (
         <Empty
           title={
-            saved ? 'Twoje sprawdzone połączenia zamieszkają tutaj' : 'Czas na dobre połączenie'
+            saved
+              ? 'Twoje sprawdzone połączenia zamieszkają tutaj'
+              : searchedFor === searchKey
+                ? 'Nie znaleziono pasujących zestawów'
+                : 'Czas na dobre połączenie'
           }
           description={
             saved
               ? 'Zapisz propozycję stylizacji, aby mieć ją pod ręką na kolejny dzień.'
-              : 'Wybierz okazję i poproś o propozycje. Potrzebujesz czystej góry i dołu lub sukienki w wybranej garderobie.'
+              : searchedFor === searchKey
+                ? 'Do zestawu potrzebujesz czystej góry i dołu albo sukienki, pasujących do okazji i temperatury. Sprawdź zapisane kategorie ubrań — sugestie FashionSigLIP trzeba zatwierdzić w szczegółach ubrania.'
+                : 'Wybierz okazję i poproś o propozycje. Potrzebujesz czystej góry i dołu lub sukienki w wybranej garderobie.'
           }
           action={
             saved ? (
@@ -210,6 +222,10 @@ export function OutfitPage({ saved = false }: { saved?: boolean }) {
                 <Link to="/outfits">
                   Odkryj stylizacje <ArrowUpRight size={16} />
                 </Link>
+              </Button>
+            ) : searchedFor === searchKey ? (
+              <Button variant="outline" asChild>
+                <Link to="/wardrobe">Sprawdź kategorie w garderobie</Link>
               </Button>
             ) : (
               <AddButton />
@@ -600,8 +616,13 @@ export function Family() {
 }
 export function Settings() {
   const me = useMe();
+  const activity = useAnalysisActivity();
   const cache = useQueryClient();
-  const { notify } = useWardrobe();
+  const { notify, wardrobes, choose } = useWardrobe();
+  const [deleting, setDeleting] = useState<(typeof wardrobes)[number]>();
+  const [removing, setRemoving] = useState(false);
+  const [analyzing, setAnalyzing] = useState<string>();
+  const [analysisMessage, setAnalysisMessage] = useState('');
   const [name, setName] = useState(me.data?.name ?? '');
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
@@ -620,6 +641,141 @@ export function Settings() {
         title="Profil i ustawienia"
         description="Zadbaj o swoje konto i wygodę korzystania z garderoby."
       />
+      <section className="form-panel mb-6">
+        <h2>Twoje garderoby</h2>
+        <p className="source-note">
+          Analiza AI uwzględni zapisane obroty zdjęć. Wyniki pojawią się w szczegółach ubrań jako
+          sugestie do zatwierdzenia. Nie nadpisze Twoich obecnych danych ani nie powtórzy usuwania
+          tła.
+        </p>
+        {analysisMessage && (
+          <p role="status" className="source-note">
+            {analysisMessage}
+          </p>
+        )}
+        {!!error && <ErrorNotice error={error} />}
+        {!wardrobes.length && <p>Nie masz jeszcze żadnej garderoby.</p>}
+        {activity.error && <ErrorNotice error={activity.error} />}
+        {wardrobes.map((w) => {
+          const pending = (activity.data ?? [])
+            .filter((a) => a.wardrobe_id === w.id)
+            .reduce((sum, a) => sum + a.queued + a.processing, 0);
+          const running = pending > 0 || analyzing === w.id;
+          return (
+            <div key={w.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <span>
+                {w.name}
+                {w.kind === 'family' ? ' · rodzinna' : ' · prywatna'}
+              </span>
+              {w.owner_id === me.data?.id ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      !!analyzing || removing || running || activity.isPending || !!activity.error
+                    }
+                    onClick={async () => {
+                      setAnalyzing(w.id);
+                      setError(undefined);
+                      setAnalysisMessage('');
+                      try {
+                        const result = await request(
+                          `/api/wardrobes/${w.id}/analyze`,
+                          z.object({
+                            queued: z.number().int().nonnegative(),
+                            pending: z.number().int().nonnegative(),
+                            missing: z.number().int().nonnegative(),
+                          }),
+                          'POST',
+                          {},
+                        );
+                        setAnalysisMessage(
+                          `${w.name}: zakolejkowano ${result.queued}, już w kolejce lub przetwarzaniu: ${result.pending}, bez zdjęcia: ${result.missing}.`,
+                        );
+                        await activity.refetch();
+                        await cache.invalidateQueries({ queryKey: ['jobs'] });
+                      } catch (e) {
+                        setError(e);
+                      } finally {
+                        setAnalyzing(undefined);
+                      }
+                    }}
+                  >
+                    {running ? (
+                      <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Sparkles size={16} />
+                    )}
+                    {analyzing === w.id
+                      ? 'Zlecanie analizy…'
+                      : running
+                        ? `Analiza AI w toku · pozostało ${pending}`
+                        : 'Ponów analizę AI wszystkich ubrań'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setError(undefined);
+                      setDeleting(w);
+                    }}
+                  >
+                    <Trash2 size={16} />
+                    Usuń
+                  </Button>
+                </div>
+              ) : (
+                <span className="source-note">Usuwa tylko właściciel</span>
+              )}
+            </div>
+          );
+        })}
+      </section>
+      <Dialog
+        open={!!deleting}
+        onOpenChange={(open) => {
+          if (!open && !removing) setDeleting(undefined);
+        }}
+        title="Czy na pewno usunąć garderobę?"
+        description={`Usunięcie garderoby „${deleting?.name ?? ''}” usunie też wszystkie ubrania w tej garderobie, ich zdjęcia, stylizacje i historię. Dotyczy to również ubrań innych członków garderoby rodzinnej. Tej operacji nie można cofnąć. Twoje konto pozostanie zachowane.`}
+      >
+        <div className="flex gap-3">
+          <Button variant="outline" disabled={removing} onClick={() => setDeleting(undefined)}>
+            Anuluj
+          </Button>
+          <Button
+            disabled={removing}
+            onClick={async () => {
+              if (!deleting) return;
+              setRemoving(true);
+              setError(undefined);
+              try {
+                await request(
+                  `/api/wardrobes/${deleting.id}`,
+                  z.object({ ok: z.boolean() }),
+                  'DELETE',
+                );
+                choose('');
+                setDeleting(undefined);
+                await Promise.all(
+                  ['wardrobes', 'garments', 'outfits', 'jobs'].map((key) =>
+                    cache.invalidateQueries({ queryKey: [key] }),
+                  ),
+                );
+                notify('Usunięto garderobę i ubrania. Zdjęcia i kolejki są sprzątane w tle.');
+              } catch (e) {
+                setError(e);
+              } finally {
+                setRemoving(false);
+              }
+            }}
+          >
+            {removing ? 'Usuwanie…' : 'Usuń garderobę i ubrania'}
+          </Button>
+        </div>
+        {!!error && <ErrorNotice error={error} />}
+      </Dialog>
       <div className="settings-grid">
         <section className="form-panel">
           <h2>Twój profil</h2>
@@ -674,7 +830,7 @@ export function Settings() {
           </div>
           <div className="setting-status">
             <span>Analiza AI</span>
-            <strong>Kolejny etap</strong>
+            <strong>Osobny komputer w LAN</strong>
           </div>
           <div className="setting-status">
             <span>Propozycje zestawów</span>

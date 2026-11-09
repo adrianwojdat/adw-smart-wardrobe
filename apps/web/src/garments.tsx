@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAnalysisActivity } from './analysis-activity';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
@@ -6,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   ArrowLeft,
+  LoaderCircle,
   Upload,
   Plus,
   Tag,
@@ -23,6 +25,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
+  imageSchema,
+  jobSchema,
   garmentInput,
   categories,
   categoryLabels,
@@ -35,9 +39,10 @@ import {
   type Garment,
   type GarmentInput,
 } from '@wardrobe/shared';
-import { api, request } from './api';
+import { api, request, imageUrl } from './api';
 import { useWardrobe, Empty, Loading, ErrorNotice } from './context';
 import { PageHeading, GarmentPhoto } from './catalog';
+import { ImageAnalysis } from './image-analysis';
 import { Button } from './components/ui/button';
 import { Dialog } from './components/ui/dialog';
 export function GarmentFormPage({ id }: { id?: string }) {
@@ -62,7 +67,7 @@ function GarmentForm({ existing }: { existing?: Garment }) {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, dirtyFields },
   } = useForm<z.input<typeof garmentInput>, unknown, GarmentInput>({
     resolver: zodResolver(garmentInput),
     defaultValues: existing ?? {
@@ -74,12 +79,17 @@ function GarmentForm({ existing }: { existing?: Garment }) {
       name: '',
     },
   });
-  // Default form values need an empty name even though final validation requires it.
+  // Keep generated names automatic until the user explicitly edits the name.
   async function submit(data: GarmentInput) {
     setError(undefined);
     try {
       const garment = savedId
-        ? await api.updateGarment(savedId, data)
+        ? await api.updateGarment(
+            savedId,
+            existing && !dirtyFields.name
+              ? Object.fromEntries(Object.entries(data).filter(([key]) => key !== 'name'))
+              : data,
+          )
         : await api.createGarment(data);
       setSavedId(garment.id);
       const uploads = [
@@ -183,7 +193,7 @@ function GarmentForm({ existing }: { existing?: Garment }) {
               {existing.garment_images.map((i) => (
                 <img
                   key={i.id}
-                  src={'/api/images/' + i.id}
+                  src={imageUrl(i)}
                   alt={i.kind === 'label' ? 'Metka' : 'Zdjęcie ubrania'}
                 />
               ))}
@@ -225,7 +235,8 @@ function GarmentForm({ existing }: { existing?: Garment }) {
         <section className="form-panel">
           <h2>Trochę o tym ubraniu</h2>
           <label>
-            Nazwa *<input {...register('name')} placeholder="np. Klasyczna granatowa marynarka" />
+            Nazwa (opcjonalna)
+            <input {...register('name')} placeholder="Zostaw puste — nazwę nada aplikacja" />
             {errors.name && <span className="field-error">{errors.name.message}</span>}
           </label>
           <div className="form-row">
@@ -383,12 +394,20 @@ function GarmentForm({ existing }: { existing?: Garment }) {
   );
 }
 export function GarmentDetail({ id }: { id: string }) {
-  const query = useQuery({ queryKey: ['garment', id], queryFn: () => api.garment(id) });
+  const activity = useAnalysisActivity();
+  const capabilities = useQuery({
+    queryKey: ['analysis-capabilities'],
+    queryFn: () => request('/api/config', z.object({ manualAnalysis: z.boolean().optional() })),
+  });
+  const query = useQuery({
+    queryKey: ['garment', id],
+    queryFn: () => api.garment(id),
+    refetchInterval: 3000,
+  });
   const jobs = useQuery({
     queryKey: ['jobs', id],
     queryFn: () => api.jobs(id),
-    refetchInterval: (q) =>
-      q.state.data?.some((j) => j.status === 'queued' || j.status === 'processing') ? 3000 : false,
+    refetchInterval: 3000,
   });
   const history = useQuery({
     queryKey: ['history', id],
@@ -402,6 +421,7 @@ export function GarmentDetail({ id }: { id: string }) {
   const navigate = useNavigate();
   const { notify } = useWardrobe();
   const [activeImage, setActiveImage] = useState('');
+  const [variant, setVariant] = useState<'catalog' | 'original' | 'cutout'>('catalog');
   const [removeOpen, setRemoveOpen] = useState(false);
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
@@ -427,7 +447,12 @@ export function GarmentDetail({ id }: { id: string }) {
   if (query.error) return <ErrorNotice error={query.error} />;
   if (!garment) return null;
   const photo =
-    garment.garment_images.find((i) => i.id === activeImage) ?? garment.garment_images[0];
+    garment.garment_images.find((i) => i.id === activeImage) ??
+    garment.garment_images.find((i) => i.kind === 'garment') ??
+    garment.garment_images[0];
+  const aiActive = (activity.data ?? []).some(
+    (a) => a.image_id === photo?.id && a.queued + a.processing > 0,
+  );
   const suggestions =
     recommendations.data?.outfits.filter((o) => o.some((g) => g.id === id)).slice(0, 3) ?? [];
   return (
@@ -456,10 +481,10 @@ export function GarmentDetail({ id }: { id: string }) {
       </div>
       <div className="detail-layout">
         <section className="detail-main">
-          <div className="detail-photo">
+          <div className={'detail-photo ' + (variant === 'cutout' ? 'transparent-preview' : '')}>
             {photo ? (
               <img
-                src={'/api/images/' + photo.id}
+                src={imageUrl(photo, variant)}
                 alt={photo.kind === 'label' ? 'Metka ubrania' : garment.name}
               />
             ) : (
@@ -469,15 +494,123 @@ export function GarmentDetail({ id }: { id: string }) {
               {cleanlinessLabels[garment.cleanliness]}
             </span>
           </div>
+          {photo && (
+            <>
+              <div className="filter-tabs" aria-label="Wersja zdjęcia">
+                {(['catalog', 'original', 'cutout'] as const).map((v) => (
+                  <button
+                    key={v}
+                    disabled={v === 'cutout' && !photo.cutout_path}
+                    className={variant === v ? 'selected' : ''}
+                    onClick={() => setVariant(v)}
+                  >
+                    {v === 'catalog' ? 'Katalogowe' : v === 'original' ? 'Oryginał' : 'Bez tła'}
+                  </button>
+                ))}
+              </div>
+              <p role="status" className="source-note">
+                {photo.stage}
+                {photo.pipeline_version ? ' · ' + photo.pipeline_version : ''}
+              </p>
+              {!!photo.processing_error && (
+                <ErrorNotice error={new Error(photo.processing_error)} />
+              )}
+              {!photo.catalog_path && photo.kind === 'garment' && (
+                <p className="source-note">Do czasu zakończenia obróbki wyświetlamy oryginał.</p>
+              )}
+              {photo.process_status === 'completed' && photo.orientation && (
+                <p className="source-note">{(photo.orientation as { reason?: string }).reason}</p>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || ['queued', 'processing'].includes(photo.process_status)}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await request(`/api/images/${photo.id}/reprocess`, imageSchema, 'POST', {});
+                    await query.refetch();
+                    await jobs.refetch();
+                  } catch (e) {
+                    setError(e);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {['queued', 'processing'].includes(photo.process_status) ? (
+                  <>
+                    <LoaderCircle size={16} className="animate-spin" />
+                    Przetwarzanie zdjęcia…
+                  </>
+                ) : (
+                  'Ponów przetwarzanie'
+                )}
+              </Button>
+              {aiActive && (
+                <p role="status" className="source-note flex items-center gap-2">
+                  <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
+                  Analiza AI w toku — oczekuje w kolejce lub jest przetwarzana.
+                </p>
+              )}
+              {activity.error && <ErrorNotice error={activity.error} />}
+              {capabilities.data?.manualAnalysis && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      busy ||
+                      aiActive ||
+                      activity.isPending ||
+                      !!activity.error ||
+                      jobs.data?.some(
+                        (j) =>
+                          j.image_id === photo.id &&
+                          j.type !== 'process_image' &&
+                          ['queued', 'processing'].includes(j.status),
+                      )
+                    }
+                    onClick={async () => {
+                      setBusy(true);
+                      setError(undefined);
+                      try {
+                        await request(`/api/images/${photo.id}/analyze`, jobSchema, 'POST', {});
+                        await Promise.all([jobs.refetch(), activity.refetch()]);
+                        notify('Zlecono analizę AI tylko tego zdjęcia.');
+                      } catch (e) {
+                        setError(e);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    {aiActive ? (
+                      <>
+                        <LoaderCircle size={16} className="animate-spin" />
+                        Analiza AI w toku…
+                      </>
+                    ) : (
+                      'Powtórz analizę AI'
+                    )}
+                  </Button>
+                </>
+              )}
+              <ImageAnalysis key={photo.id + ':' + photo.revision} image={photo} garmentId={id} />
+            </>
+          )}
           <div className="thumbnail-row">
             {garment.garment_images.map((i) => (
               <button
                 key={i.id}
                 className={i.id === photo?.id ? 'selected' : ''}
-                onClick={() => setActiveImage(i.id)}
+                onClick={() => {
+                  setActiveImage(i.id);
+                  setVariant(i.kind === 'label' ? 'original' : 'catalog');
+                }}
                 aria-label={i.kind === 'label' ? 'Pokaż metkę' : 'Pokaż zdjęcie ubrania'}
               >
-                <img src={'/api/images/' + i.id} alt="" />
+                <img src={imageUrl(i)} alt="" />
                 {i.kind === 'label' && <Tag size={13} />}
               </button>
             ))}
@@ -490,6 +623,37 @@ export function GarmentDetail({ id }: { id: string }) {
               <Plus />
             </Link>
           </div>
+          {photo && (
+            <div className="flex gap-2 mb-5">
+              {(['left', 'right'] as const).map((direction) => (
+                <Button
+                  key={direction}
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setError(undefined);
+                    try {
+                      await request(`/api/images/${photo.id}/rotate`, imageSchema, 'POST', {
+                        direction,
+                      });
+                      await cache.invalidateQueries({ queryKey: ['garment', id] });
+                      await cache.invalidateQueries({ queryKey: ['garments'] });
+                      notify('Zlecono obrót i ponowne przygotowanie zdjęcia.');
+                    } catch (e) {
+                      setError(e);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  <RotateCcw size={15} />
+                  {direction === 'left' ? 'Obróć w lewo' : 'Obróć w prawo'}
+                </Button>
+              ))}
+            </div>
+          )}
           <span className="eyebrow">{garment.brand || 'TWOJA OSOBISTA KOLEKCJA'}</span>
           <h1 className="detail-title">{garment.name}</h1>
           <dl className="metadata">
@@ -681,19 +845,36 @@ export function GarmentDetail({ id }: { id: string }) {
           </div>
           {jobs.data && jobs.data.length > 0 && (
             <div className="jobs-panel">
-              <h3>Przetwarzanie zdjęć</h3>
+              <h3>Zdjęcia i analiza AI</h3>
               {jobs.data.map((j) => (
                 <div key={j.id}>
                   <span>
-                    {j.status === 'completed'
-                      ? 'Zdjęcie gotowe'
-                      : j.status === 'failed'
-                        ? 'Błąd przetwarzania'
-                        : j.status === 'queued'
-                          ? 'W kolejce'
-                          : 'Przetwarzanie…'}
+                    {['queued', 'processing'].includes(j.status) && (
+                      <LoaderCircle
+                        size={14}
+                        className="inline animate-spin mr-2"
+                        aria-label="Zadanie w toku"
+                      />
+                    )}
+                    {j.status === 'cancelled'
+                      ? 'Anulowano'
+                      : j.status === 'completed'
+                        ? 'Gotowe'
+                        : j.status === 'failed'
+                          ? 'Błąd przetwarzania'
+                          : j.status === 'queued'
+                            ? 'W kolejce'
+                            : 'Przetwarzanie…'}
                   </span>
-                  <small>{j.progress}%</small>
+                  <small>
+                    {j.type === 'process_image'
+                      ? 'Obróbka'
+                      : j.type === 'analyze_label'
+                        ? 'Odczyt metki'
+                        : 'Analiza AI'}{' '}
+                    · {j.progress}%
+                  </small>
+                  {j.error && <span className="source-note">{j.error}</span>}
                   {j.status === 'failed' && (
                     <button
                       aria-label="Ponów przetwarzanie"

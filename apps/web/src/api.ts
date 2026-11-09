@@ -82,14 +82,20 @@ export const api = {
     }
   },
   garment: (id: string) => request('/api/garments/' + id, garmentSchema),
-  createGarment: (data: GarmentInput) => request('/api/garments', garmentSchema, 'POST', data),
+  createGarment: (data: GarmentInput & { id?: string }) =>
+    request('/api/garments', garmentSchema, 'POST', data),
   updateGarment: (id: string, data: Partial<GarmentInput>) =>
     request('/api/garments/' + id, garmentSchema, 'PATCH', data),
   deleteGarment: (id: string) => request('/api/garments/' + id, ok, 'DELETE'),
-  upload: (id: string, file: File, kind: 'garment' | 'label' = 'garment') => {
+  upload: (id: string, file: File, kind: 'garment' | 'label' = 'garment', uploadId?: string) => {
     const form = new FormData();
     form.append('file', file);
-    return request(`/api/garments/${id}/images?kind=${kind}`, imageSchema, 'POST', form);
+    return request(
+      `/api/garments/${id}/images?kind=${kind}${uploadId ? '&upload_id=' + uploadId : ''}`,
+      imageSchema,
+      'POST',
+      form,
+    );
   },
   jobs: (id: string) => request('/api/jobs?garment_id=' + id, z.array(jobSchema)),
   retry: (id: string) => request('/api/jobs/' + id + '/retry', jobSchema, 'POST'),
@@ -104,3 +110,9 @@ export const api = {
       { wardrobe_id, occasion, temperature },
     ),
 };
+
+export const imageUrl = (
+  image: { id: string; path: string; revision?: number; catalog_path?: string | null },
+  variant: 'catalog' | 'thumbnail' | 'original' | 'cutout' = 'catalog',
+) =>
+  `/api/images/${image.id}?variant=${variant}&v=${encodeURIComponent((image.catalog_path ?? image.path) + ':' + (image.revision ?? 0))}`;

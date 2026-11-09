@@ -16,6 +16,7 @@ import { Dashboard, Catalog } from './catalog';
 import { GarmentDetail, GarmentFormPage } from './garments';
 import { Family, Laundry, OutfitPage, Settings } from './other-pages';
 import './styles.css';
+import { BulkUploadProvider, BulkUploadPage } from './bulk-upload';
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30000, refetchOnWindowFocus: true } },
 });
@@ -67,7 +68,9 @@ const privateRoute = createRoute({
   id: 'authenticated',
   component: () => (
     <Shell>
-      <Outlet />
+      <BulkUploadProvider>
+        <Outlet />
+      </BulkUploadProvider>
     </Shell>
   ),
 });
@@ -80,6 +83,11 @@ const catalog = createRoute({
   getParentRoute: () => privateRoute,
   path: '/wardrobe',
   component: Catalog,
+});
+const bulkImport = createRoute({
+  getParentRoute: () => privateRoute,
+  path: '/garments/import',
+  component: BulkUploadPage,
 });
 const newGarment = createRoute({
   getParentRoute: () => privateRoute,
@@ -132,6 +140,7 @@ const router = createRouter({
       dashboard,
       catalog,
       newGarment,
+      bulkImport,
       garment,
       edit,
       outfits,

@@ -15,7 +15,7 @@ import {
   Archive,
 } from 'lucide-react';
 import { categories, categoryLabels, cleanlinessLabels, type Garment } from '@wardrobe/shared';
-import { api } from './api';
+import { api, imageUrl } from './api';
 import { useWardrobe, useMe, Empty, Loading, ErrorNotice } from './context';
 import { Button } from './components/ui/button';
 export function useGarments(archived = false) {
@@ -37,7 +37,7 @@ export function GarmentPhoto({
   return img ? (
     <img
       className={'garment-photo ' + className}
-      src={'/api/images/' + img.id}
+      src={imageUrl(img)}
       alt={garment.name}
       loading="lazy"
     />
@@ -119,11 +119,19 @@ export function PageHeading({
 export function AddButton() {
   const { wardrobe, create } = useWardrobe();
   return wardrobe ? (
-    <Button asChild>
-      <Link to="/garments/new">
-        <Plus size={18} /> Dodaj ubranie
-      </Link>
-    </Button>
+    <div className="bulk-actions">
+      <Button asChild>
+        <Link to="/garments/new">
+          <Plus size={18} /> Dodaj ubranie
+        </Link>
+      </Button>
+      <Button asChild variant="outline">
+        <Link to="/garments/import">
+          <Plus size={18} />
+          Dodaj wiele ubrań
+        </Link>
+      </Button>
+    </div>
   ) : (
     <Button onClick={create}>
       <Plus size={18} /> Utwórz garderobę

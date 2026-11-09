@@ -24,7 +24,7 @@ test('registration → login → wardrobe → upload → catalog → details', a
   await dialog.getByRole('button', { name: 'Utwórz garderobę', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await page.getByRole('link', { name: 'Dodaj ubranie', exact: true }).first().click();
-  await page.getByLabel('Nazwa *', { exact: true }).fill('Koszulka E2E');
+  await page.getByLabel('Nazwa (opcjonalna)', { exact: true }).fill('Koszulka E2E');
   await page.getByLabel('Marka', { exact: true }).fill('Test');
   await page
     .getByLabel('Zdjęcia ubrania', { exact: true })
