@@ -234,3 +234,7 @@ Dodatkowa weryfikacja po awarii zasilania: odczytowe porównanie całego drzewa 
 ## 2026-11-10 — usunięcie nieaktywnych kopii z data
 
 Na wyraźne żądanie użytkownika usunięto `data/storage-before-sidecars-2026-11-10T17-20-31.242Z/` (551 plików, w tym pliki Findera) i nieużywany `data/storage-metadata/` (548 plików JSON), około 913 MiB. Przed operacją sprawdzono bieżącą konfigurację mountów i obecność zweryfikowanego niezależnego backupu. Lista i rozmiary wszystkich 556 aktualnych plików w `data/storage/` pozostały identyczne. Nie usuwano archiwów `investigation/backups/`, wolumenów ani danych SQL i nie uruchamiano usług. W chwili kontroli OrbStack nie miał kontenerów, stare kontenery projektu w Docker Desktop były zatrzymane; nie deklarowano bieżącego health aplikacji. Raport: `investigation/reports/orbstack-migration/removed-inactive-copies.json`.
+
+## 2026-11-10 — instrukcja aplikacji w README
+
+Przebudowano README: opis produktu, lista funkcji, uruchomienie nowej i istniejącej instalacji, przewodnik po ekranach i imporcie 200 zdjęć, obrót, reguły zapisu AI, stylizacje, pranie, rodzina, architektura z diagramami Mermaid, konfiguracja, kolejki, bezpieczeństwo, backupy xattr i ograniczenia. Usunięto nieaktualne twierdzenia o niewdrożonej analizie i nieaktywnej kopii data/storage. Sprawdzono routing i limity w kodzie, konfigurację obrazów oraz istnienie lokalnych odnośników. Zmiany wyłącznie dokumentacyjne; nie uruchamiano kontenerów, migracji, modeli ani ponownych testów aplikacji.
