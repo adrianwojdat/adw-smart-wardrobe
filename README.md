@@ -61,4 +61,25 @@ pnpm test:e2e
 - [Konwencje i komendy dla agentów](AGENTS.md)
 - OpenAPI po uruchomieniu: http://localhost:8080/api/docs
 
-Baseline Supabase: oficjalne wydanie self-hosted **0.8.4**, commit zapisany w `infra/supabase/provenance.json`. Zachowano wszystkie usługi bazowe; publiczne porty ma wyłącznie Caddy. Repozytorium nie wykonuje żadnych operacji administracyjnych na hoście Proxmox.
+Baseline Supabase: oficjalne wydanie self-hosted **0.8.4**, commit zapisany w `infra/supabase/provenance.json`. Zachowano wszystkie usługi bazowe; Caddy obsługuje dostęp do aplikacji; PostgreSQL i Studio mają osobne porty ograniczone do 127.0.0.1. Repozytorium nie wykonuje żadnych operacji administracyjnych na hoście Proxmox.
+
+## Postico na Macu
+
+Połączenie lokalne: host `127.0.0.1`, port `54322`, użytkownik `postgres`, baza `postgres`, hasło z `POSTGRES_PASSWORD` w `.env`. PostgreSQL jest udostępniony wyłącznie na interfejsie loopback hosta Docker; Redis pozostaje wewnętrzny.
+
+Analiza ubrań działa domyślnie lokalnie na CPU przez FashionSigLIP (`GARMENT_ANALYSIS_PROVIDER=fashion-siglip`). Przed pierwszym buildem na nowym hoście pobierz przypięty encoder według [instrukcji modelu](infra/models/fashion-siglip/README.md). Nie wymaga Ollamy; OCR metek nadal korzysta z opcjonalnego komputera LAN. Pierwsza analiza nowego, nieedytowanego ubrania uzupełnia dane automatycznie; ponowne analizy pozostają sugestiami, chyba że użytkownik włączy automatyczne nadpisywanie. Podobieństwo nie jest procentową pewnością.
+
+Supabase Studio: http://localhost:8000 (wyłącznie 127.0.0.1). Logowanie administracyjne: `DASHBOARD_USERNAME` i `DASHBOARD_PASSWORD` z lokalnego `.env`, nie konto aplikacji. Studio startuje automatycznie z `docker compose up -d`; istniejący oficjalny gateway wymaga Basic Auth. Nie udostępniaj tego portu przez tunel lub publiczny reverse proxy.
+
+Dostęp z telefonu w LAN: otwórz `http://<IP-laptopa>:8080` i dodaj ten dokładny origin do `APP_ADDITIONAL_ORIGINS` w `.env` (lista oddzielona przecinkami). `APP_ORIGIN` pozostaje głównym adresem aplikacji. Po zmianie odtwórz tylko API: `docker compose up -d --no-deps api`. Nie stosuj wildcardów. Przy zmianie adresu IP laptopa zaktualizuj listę. `COOKIE_SECURE=false` dotyczy lokalnego HTTP; dla wdrożenia HTTPS używaj `true`.
+
+
+## Ciepłota i automatyzacja metadanych
+
+Ciepłota pozostaje w skali 1–5 i wynika ze wspólnych reguł kategorii. Formularz przelicza ją po zmianie kategorii/podkategorii; ręczna korekta ma pierwszeństwo w bieżącej edycji i jest zapisywana. Akcesoria nie mają wkładu cieplnego w generatorze stylizacji.
+
+W Ustawieniach opcja „Pozwalaj AI na nadpisywanie metadanych ubrań” jest domyślnie wyłączona i zapisywana osobno dla każdego użytkownika. Po włączeniu następne analizy własnych ubrań mogą automatycznie aktualizować obsługiwane parametry, w tym kategorię, kolory, wzór i wyliczoną ciepłotę. Ręczne nazwy, notatki, właściciel, zdjęcia i relacje pozostają zachowane. Niepewnego materiału i rozmiaru nie uzupełniamy ze zdjęcia. Zmiana ubrania w trakcie analizy blokuje automatyczny zapis starego wyniku. Włączenie opcji nie uruchamia masowej analizy.
+
+Generator może dodać istniejący, dostępny pasek do kompatybilnych spodni. Uwzględnia kolor i styl, w szczególności obuwie; pomija dresy, legginsy, joggery i spódnice. Pasek jest opcjonalnym dodatkiem.
+
+Przygotowanie przeniesienia Storage opisuje lokalny, ignorowany raport `investigation/reports/storage-migration/plan.md`. Mount pozostaje named volume, dopóki właściciel nie zatwierdzi migracji. Nie kopiuj zdjęć do Git ani nie usuwaj starego wolumenu. Pobrane wagi modeli również pozostają poza Git; zachowaj je przy wdrożeniu na kolejnym hoście.
