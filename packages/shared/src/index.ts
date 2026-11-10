@@ -284,3 +284,5 @@ export function aiValueLabel(field: string, value: unknown): string {
     ? value.map((v) => aiValueLabel(field, v)).join(', ')
     : (dictionaries[field]?.[String(value)] ?? String(value));
 }
+
+export * from './outfit-scoring.js';

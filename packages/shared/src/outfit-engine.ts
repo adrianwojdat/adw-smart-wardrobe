@@ -1,3 +1,4 @@
+import { evaluateOutfit } from './outfit-scoring.js';
 import type { Garment } from './index.js';
 export const fold = (s: string) =>
   s.toLocaleLowerCase('pl-PL').normalize('NFD').replace(/\p{M}/gu, '').replace(/ł/g, 'l');
@@ -84,5 +85,11 @@ export function generateOutfits(
       for (const shoe of shoes.length ? shoes : [undefined])
         result.push([...plan, ...(shoe ? [shoe] : [])]);
   }
-  return result.slice(0, 6);
+  return result
+    .sort(
+      (a, b) =>
+        evaluateOutfit(b, occasion, temperature).score -
+        evaluateOutfit(a, occasion, temperature).score,
+    )
+    .slice(0, 6);
 }

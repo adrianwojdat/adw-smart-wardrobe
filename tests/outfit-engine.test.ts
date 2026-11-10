@@ -42,3 +42,17 @@ it('does not use a cardigan as the only base or warm clothes at 40 degrees', () 
     thermalCompatible([item(1, 'tops', { warmth: 5 }), item(2, 'bottoms', { warmth: 5 })], 40),
   ).toBe(false);
 });
+
+it('scores known compatible styles above missing data without forbidding mixtures', async () => {
+  const { styleDecision } = await import('../packages/shared/src/outfit-scoring');
+  expect(
+    styleDecision([item(1, 'tops', { style: 'casual' }), item(2, 'bottoms', { style: 'casual' })])
+      .value,
+  ).toBeGreaterThan(styleDecision([item(1, 'tops'), item(2, 'bottoms')]).value);
+  expect(
+    styleDecision([
+      item(1, 'tops', { style: 'sportowy' }),
+      item(2, 'bottoms', { style: 'formalny' }),
+    ]).value,
+  ).toBeGreaterThan(0);
+});
