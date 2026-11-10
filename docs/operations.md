@@ -2,7 +2,9 @@
 
 ## Co zachować
 
-PostgreSQL (wszystkie bazy, role, auth, storage metadata i schemat private), fizyczne obiekty z `storage-data`, `db-config` (klucze pgsodium), `.env`, wersję repozytorium i lockfile. `caddy-data` zawiera certyfikaty. Redis używa AOF w `redis-data`; stan biznesowy zadań jest również w PostgreSQL. Sama kopia SQL nie zawiera zdjęć.
+PostgreSQL (wszystkie bazy, role, auth, storage metadata i schemat private), oba katalogi `data/storage/` (zdjęcia) i `data/storage-metadata/` (metadane plików), `db-config` (klucze pgsodium), `.env`, wersję repozytorium i lockfile. `caddy-data` zawiera certyfikaty. Redis używa AOF w `redis-data`; stan biznesowy zadań jest również w PostgreSQL. Sama kopia SQL nie zawiera zdjęć. Stary wolumen `storage-data` jest zachowany po migracji, ale nowe zdjęcia trafiają do katalogu projektu.
+
+Na macOS przypięty obraz Storage ma własną adaptację metadanych zamiast xattr; szczegóły i ograniczenia w [infra/storage-sidecars/README.md](../infra/storage-sidecars/README.md). Nie edytuj zdjęć ani plików metadanych ręcznie. Supabase zachowuje strukturę ścieżek i identyfikatory wersji, więc plik obrazu może mieć nazwę UUID bez rozszerzenia.
 
 ## Spójna kopia
 
@@ -10,12 +12,12 @@ Najprostsza procedura dla małej instalacji to krótka przerwa serwisowa: zatrzy
 
 ```sh
 umask 077
-mkdir -p backups/2026-11-08
-# Nazwę katalogu dobierz do bieżącej daty.
+wardrobe_backup_dir="investigation/backups/operations-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$wardrobe_backup_dir"
 docker compose stop web api worker auth storage realtime supavisor functions studio meta rest api-gw
-docker compose exec -T db pg_dumpall -U supabase_admin > backups/2026-11-08/cluster.sql
-docker compose exec -T imgproxy tar -C /var/lib/storage -cf - . > backups/2026-11-08/storage.tar
-docker compose exec -T db tar -C /etc/postgresql-custom -cf - . > backups/2026-11-08/db-config.tar
+docker compose exec -T db pg_dumpall -U supabase_admin > "$wardrobe_backup_dir/cluster.sql"
+tar -C data -cf "$wardrobe_backup_dir/storage-and-metadata.tar" storage storage-metadata
+docker compose exec -T db tar -C /etc/postgresql-custom -cf - . > "$wardrobe_backup_dir/db-config.tar"
 docker compose up -d
 ```
 
@@ -26,7 +28,7 @@ Nie kopiuj na żywo surowego PGDATA przez `tar`; użyj logicznego dumpu lub popr
 ## Odtwarzanie — zawsze najpierw próba
 
 1. Przygotuj odizolowany LXC/VM z tą samą wersją obrazów i kopią repozytorium. Nie kieruj na niego domeny produkcyjnej i zablokuj SMTP podczas próby.
-2. Użyj zachowanych sekretów. Odtwórz klucze `db-config` oraz obiekty Storage z backupu w odpowiednich wolumenach.
+2. Użyj zachowanych sekretów. Odtwórz klucze `db-config` w odpowiednim wolumenie oraz oba katalogi Storage w `data/`. Nie pomijaj `storage-metadata/`; przejście z powrotem na oficjalny backend xattr wymaga osobnego odtworzenia atrybutów na wspieranym systemie plików.
 3. Uruchom samo PostgreSQL. Domyślna inicjalizacja Supabase tworzy role/systemowe bazy; pełny dump klastra może zawierać te same role/bazy. Administrator powinien przygotować kontrolowany restore zgodnie z wersją PostgreSQL i sprawdzić każdy konflikt, zamiast ignorować błędy lub wykonywać dump na produkcji. Dla rutynowej eksploatacji przygotuj i zweryfikuj runbook restore dostosowany do wybranego sposobu backupu.
 4. Po przywróceniu SQL uruchom Auth/Storage i pozostały stos. Migrator porówna checksumy; nie powinien ponownie wykonywać już zapisanych migracji.
 5. Sprawdź logowanie istniejącego użytkownika, listę garderób, odczyt kilku zdjęć i polityki dostępu drugiego użytkownika. Sprawdź losowe zdjęcia po nazwach obiektów, nie tylko liczbę rekordów.
