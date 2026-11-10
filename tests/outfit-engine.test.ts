@@ -91,3 +91,18 @@ it('ranks compatible footwear and rejects sandals in cold weather', async () => 
     ),
   ).toBe(false);
 });
+
+it('requires evidence of loops for shorts and a positive reason to add a belt', async () => {
+  const { beltCandidates } = await import('../packages/shared/src/outfit-accessories');
+  const belt = item(3, 'accessories', { name: 'Czarny pasek', primary_color: 'czarny' });
+  const short = item(2, 'bottoms', { subcategory: 'Szorty chino', primary_color: 'czarny' });
+  expect(beltCandidates([short], [belt])).toHaveLength(0);
+  expect(beltCandidates([{ ...short, notes: 'Szlufki na pasek' }], [belt])).toHaveLength(1);
+  expect(beltCandidates([{ ...short, notes: 'Bez szlufek' }], [belt])).toHaveLength(0);
+  expect(
+    beltCandidates(
+      [{ ...short, notes: 'Szlufki', primary_color: '' }],
+      [{ ...belt, primary_color: '' }],
+    ),
+  ).toHaveLength(0);
+});

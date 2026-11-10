@@ -1,3 +1,4 @@
+import { beltEvidence } from './outfit-accessories.js';
 import { shoeDecision } from './outfit-shoes.js';
 import { paletteValue, patternValue } from './outfit-colors.js';
 import type { Garment } from './index.js';
@@ -87,6 +88,9 @@ export function evaluateOutfit(
   });
   const footwear = shoeDecision(items, occasion, temperature);
   trace.push(footwear);
+  const belt = items.find((g) => g.category === 'accessories');
+  const accessory = belt ? beltEvidence(clothes, belt) : undefined;
+  if (accessory) trace.push(accessory);
   const values = {
     style: trace[0]!.value,
     occasion: trace[1]!.value,
@@ -94,7 +98,7 @@ export function evaluateOutfit(
     color: palette.value,
     pattern: patternValue(clothes),
     shoes: footwear.value,
-    accessories: 0,
+    accessories: accessory?.value ?? 0,
     diversity: 0,
   };
   const score = Object.entries(values).reduce(

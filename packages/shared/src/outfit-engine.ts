@@ -1,3 +1,4 @@
+import { beltCandidates } from './outfit-accessories.js';
 import { evaluateOutfit } from './outfit-scoring.js';
 import type { Garment } from './index.js';
 export const fold = (s: string) =>
@@ -92,7 +93,11 @@ export function generateOutfits(
         if (thermalCompatible(candidate, temperature)) result.push(candidate);
       }
   }
-  return result
+  const variants = result.flatMap((core) => [
+    core,
+    ...beltCandidates(core, available).map((belt) => [...core, belt]),
+  ]);
+  return variants
     .sort(
       (a, b) =>
         evaluateOutfit(b, occasion, temperature).score -
