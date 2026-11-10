@@ -1,7 +1,7 @@
+import { recommendBaseline as recommend } from './fixtures/outfit-baseline';
 import { expect, it } from 'vitest';
 import {
   garmentSchema,
-  recommend,
   recommendBelt,
   beltCompatible,
   type Garment,

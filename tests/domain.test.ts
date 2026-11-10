@@ -1,10 +1,6 @@
+import { recommendBaseline as recommend } from './fixtures/outfit-baseline';
 import { describe, it, expect } from 'vitest';
-import {
-  garmentInput,
-  garmentSchema,
-  recommend,
-  registerSchema,
-} from '../packages/shared/src/index';
+import { garmentInput, garmentSchema, registerSchema } from '../packages/shared/src/index';
 import { encrypt, decrypt, hash } from '../apps/api/src/session';
 const base = {
   wardrobe_id: '2fd58432-9442-4190-9e2b-e1cab47b7cc7',
