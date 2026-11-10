@@ -54,7 +54,9 @@ export function paletteValue(items: Garment[]) {
 }
 export function patternValue(items: Garment[]) {
   const labels = items
-    .map((g) => g.pattern?.trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, ''))
+    .map((g) =>
+      g.pattern?.trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/ł/g, 'l'),
+    )
     .filter((s): s is string => !!s && !/unknown|nieznan/.test(s));
   const patterned = labels.filter((s) => !/^(gladk[iaey]|bez wzoru|plain|solid)$/.test(s));
   return labels.length
