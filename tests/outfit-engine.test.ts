@@ -106,3 +106,28 @@ it('requires evidence of loops for shorts and a positive reason to add a belt', 
     ),
   ).toHaveLength(0);
 });
+
+it('selects by quality before diversity, is seeded and never forces six weak results', async () => {
+  const { seededOutfitRandom } = await import('../packages/shared/src/outfit-engine');
+  const good = [
+    item(1, 'tops', {
+      subcategory: 'Koszula',
+      primary_color: 'biały',
+      style: 'casual',
+      occasions: ['everyday'],
+    }),
+    item(2, 'bottoms', {
+      subcategory: 'Chinosy',
+      primary_color: 'granatowy',
+      style: 'casual',
+      occasions: ['everyday'],
+    }),
+    item(3, 'shoes', { subcategory: 'Półbuty', style: 'casual' }),
+  ];
+  expect(recommend(good, 'everyday', 18, seededOutfitRandom(42))).toEqual(
+    recommend(good, 'everyday', 18, seededOutfitRandom(42)),
+  );
+  expect(recommend(good, 'everyday')).toHaveLength(1);
+  expect(recommend([item(1, 'tops'), item(2, 'bottoms')], 'everyday')).toHaveLength(0);
+  expect(recommend(good, 'everyday', 18, seededOutfitRandom(1), { minimumScore: 100 })).toEqual([]);
+});

@@ -1,5 +1,5 @@
 import { beltCandidates } from './outfit-accessories.js';
-import { evaluateOutfit } from './outfit-scoring.js';
+import { type Weights, scoreWeights, evaluateOutfit } from './outfit-scoring.js';
 import type { Garment } from './index.js';
 export const fold = (s: string) =>
   s.toLocaleLowerCase('pl-PL').normalize('NFD').replace(/\p{M}/gu, '').replace(/ł/g, 'l');
@@ -57,7 +57,8 @@ export function generateOutfits(
   garments: Garment[],
   occasion: string,
   temperature = 18,
-  _random: () => number = Math.random,
+  random: () => number = Math.random,
+  options: { weights?: Weights; minimumScore?: number } = {},
 ): Garment[][] {
   const wardrobe = garments[0]?.wardrobe_id;
   const available = garments.filter(
@@ -86,7 +87,11 @@ export function generateOutfits(
         const items = [...base, ...(mid ? [mid] : []), ...(outer ? [outer] : [])];
         if (thermalCompatible(items, temperature)) plans.push(items);
       }
-    plans.sort((a, b) => a.length - b.length);
+    plans.sort(
+      (a, b) =>
+        evaluateOutfit(b, occasion, temperature).score -
+          evaluateOutfit(a, occasion, temperature).score || a.length - b.length,
+    );
     for (const plan of plans.slice(0, 2))
       for (const shoe of shoes.length ? shoes : [undefined]) {
         const candidate = [...plan, ...(shoe ? [shoe] : [])];
@@ -97,11 +102,49 @@ export function generateOutfits(
     core,
     ...beltCandidates(core, available).map((belt) => [...core, belt]),
   ]);
-  return variants
-    .sort(
-      (a, b) =>
-        evaluateOutfit(b, occasion, temperature).score -
-        evaluateOutfit(a, occasion, temperature).score,
-    )
-    .slice(0, 6);
+  const weights = options.weights ?? scoreWeights;
+  if (
+    Object.values(weights).some((n) => !Number.isFinite(n) || n < 0) ||
+    !Object.values(weights).some((n) => n > 0)
+  )
+    throw new Error('Invalid outfit weights');
+  const floor = options.minimumScore ?? 32;
+  if (!Number.isFinite(floor)) throw new Error('Invalid quality threshold');
+  const ranked = variants
+    .map((items) => ({
+      items,
+      score: evaluateOutfit(items, occasion, temperature, weights).score,
+      tie: random(),
+    }))
+    .filter((c) => c.score >= floor);
+  const selected: Garment[][] = [];
+  const usedBases = new Set<string>();
+  const key = (items: Garment[]) =>
+    items
+      .filter((g) => ['base', 'bottom', 'dress'].includes(garmentRole(g)))
+      .map((g) => g.id)
+      .sort()
+      .join(':');
+  while (ranked.length && selected.length < 6) {
+    const utility = (c: (typeof ranked)[number]) => {
+      const overlap = Math.max(
+        0,
+        ...selected.map((previous) => {
+          const a = new Set(previous.map((g) => g.id)),
+            b = new Set(c.items.map((g) => g.id));
+          return [...a].filter((id) => b.has(id)).length / new Set([...a, ...b]).size;
+        }),
+      );
+      return c.score - weights.diversity * overlap + c.tie * 0.000001;
+    };
+    ranked.sort((a, b) => utility(b) - utility(a));
+    const next = ranked.shift()!;
+    if (usedBases.has(key(next.items))) continue;
+    selected.push(next.items);
+    usedBases.add(key(next.items));
+  }
+  return selected;
+}
+export function seededOutfitRandom(seed: number) {
+  return () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
 }
