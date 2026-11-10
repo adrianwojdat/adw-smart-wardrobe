@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { RecommendationRequest } from './recommendation-request';
+import { useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
@@ -43,21 +44,30 @@ export function OutfitPage({ saved = false }: { saved?: boolean }) {
   const cache = useQueryClient();
   const [occasion, setOccasion] = useState<OutfitInput['occasion']>('everyday');
   const [temperature, setTemperature] = useState(18);
+  const [requests] = useState(() => new RecommendationRequest());
   const [generated, setGenerated] = useState<Garment[][]>([]);
   const [searchedFor, setSearchedFor] = useState('');
   const searchKey = `${wardrobe?.id}:${occasion}:${temperature}`;
+  const currentCriteria = useRef(searchKey);
+  currentCriteria.current = searchKey;
+  requests.observe(searchKey);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
   const savedQuery = useQuery({ queryKey: ['outfits'], queryFn: api.outfits, enabled: saved });
   async function generate() {
     if (!wardrobe) return;
+    const revision = requests.begin();
+    const submitted = searchKey;
     setBusy(true);
     setError(undefined);
     try {
-      setGenerated((await api.recommendations(wardrobe.id, occasion, temperature)).outfits);
-      setSearchedFor(searchKey);
+      const result = await api.recommendations(wardrobe.id, occasion, temperature);
+      if (requests.accepts(revision, submitted, currentCriteria.current)) {
+        setGenerated(result.outfits);
+        setSearchedFor(submitted);
+      }
     } catch (e) {
-      setError(e);
+      if (requests.accepts(revision, submitted, currentCriteria.current)) setError(e);
     } finally {
       setBusy(false);
     }
@@ -73,7 +83,7 @@ export function OutfitPage({ saved = false }: { saved?: boolean }) {
             .map((id) => garments.data?.find((g) => g.id === id))
             .filter((g): g is Garment => !!g),
         }))
-    : generated
+    : (searchedFor === searchKey ? generated : [])
         .filter((gs) => gs.every((g) => g.wardrobe_id === wardrobe?.id))
         .map((gs, i) => ({
           id: String(i),
@@ -162,6 +172,9 @@ export function OutfitPage({ saved = false }: { saved?: boolean }) {
               <div className="p-5">
                 <span className="eyebrow">{occasionLabels[o.occasion]}</span>
                 <h2>{o.name}</h2>
+                {!o.garments.some((g) => g.category === 'shoes') && (
+                  <p>Zestaw częściowy — dobierz obuwie przed wyjściem.</p>
+                )}
                 <p>
                   {o.garments.map((g) => g.name).join(' + ') ||
                     'Ubrania z tego zestawu zostały usunięte lub zarchiwizowane.'}
