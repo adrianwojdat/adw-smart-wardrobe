@@ -2,9 +2,9 @@
 
 ## Co zachować
 
-PostgreSQL (wszystkie bazy, role, auth, storage metadata i schemat private), oba katalogi `data/storage/` (zdjęcia) i `data/storage-metadata/` (metadane plików), `db-config` (klucze pgsodium), `.env`, wersję repozytorium i lockfile. `caddy-data` zawiera certyfikaty. Redis używa AOF w `redis-data`; stan biznesowy zadań jest również w PostgreSQL. Sama kopia SQL nie zawiera zdjęć. Stary wolumen `storage-data` jest zachowany po migracji, ale nowe zdjęcia trafiają do katalogu projektu.
+PostgreSQL (wszystkie bazy, role, auth, storage metadata i schemat private), `data/storage/` **wraz z atrybutami xattr**, `db-config` (klucze pgsodium), `.env`, wersję repozytorium i lockfile. `caddy-data` zawiera certyfikaty. Redis używa AOF w `redis-data`; stan biznesowy zadań jest również w PostgreSQL. Sama kopia SQL nie zawiera zdjęć, a kopia samych bajtów zdjęć nie zawiera ich metadanych HTTP. Stare wolumeny Docker Desktop są zachowane jako punkt odzyskiwania; aktywne PostgreSQL i Redis działają w OrbStack, zdjęcia w katalogu projektu.
 
-Na macOS przypięty obraz Storage ma własną adaptację metadanych zamiast xattr; szczegóły i ograniczenia w [infra/storage-sidecars/README.md](../infra/storage-sidecars/README.md). Nie edytuj zdjęć ani plików metadanych ręcznie. Supabase zachowuje strukturę ścieżek i identyfikatory wersji, więc plik obrazu może mieć nazwę UUID bez rozszerzenia.
+Na macOS używamy OrbStack i niezmodyfikowanego oficjalnego Storage z natywnymi xattr: [infra/storage/README.md](../infra/storage/README.md). Dawny katalog JSON `data/storage-metadata/` jest tylko zachowaną kopią do odzyskiwania; nie uczestniczy już w działaniu aplikacji. Nie edytuj plików zdjęć ani atrybutów ręcznie. Supabase zachowuje strukturę ścieżek i identyfikatory wersji, więc plik obrazu może mieć nazwę UUID bez rozszerzenia.
 
 ## Spójna kopia
 
@@ -16,19 +16,22 @@ wardrobe_backup_dir="investigation/backups/operations-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$wardrobe_backup_dir"
 docker compose stop web api worker auth storage realtime supavisor functions studio meta rest api-gw
 docker compose exec -T db pg_dumpall -U supabase_admin > "$wardrobe_backup_dir/cluster.sql"
-tar -C data -cf "$wardrobe_backup_dir/storage-and-metadata.tar" storage storage-metadata
+# Hostowy tar: BSD tar na macOS lub GNU tar na Linuxie, z obsługą xattr.
+tar --xattrs -C data -cf "$wardrobe_backup_dir/storage.tar" storage
 docker compose exec -T db tar -C /etc/postgresql-custom -cf - . > "$wardrobe_backup_dir/db-config.tar"
 docker compose up -d
 ```
 
 Polecenie `pg_dumpall` obejmuje role i wrażliwe dane Auth; plik musi być zaszyfrowany i dostępny tylko administratorowi. Kopię `.env` wykonaj osobno do zaszyfrowanego magazynu. Nie dodawaj backupów do Git. Skopiuj backup poza host i sprawdź sumy SHA-256. Możesz też stosować sprawdzone kopie fizyczne PostgreSQL z WAL/PITR, ale konfiguracja PITR nie jest częścią MVP.
 
+Przy odtwarzaniu archiwum zdjęć użyj również `tar --xattrs`. Round-trip hostowego BSD tar na tym Macu został sprawdzony na izolowanym pliku z atrybutami Supabase. Przy przenoszeniu archiwum macOS ↔ Linux osobno sprawdź zgodność zapisu xattr narzędzi obu systemów; nie wystarczy porównać SHA256 zdjęć. BusyBox tar z obrazu Storage nie zastępuje hostowego narzędzia w tym poleceniu.
+
 Nie kopiuj na żywo surowego PGDATA przez `tar`; użyj logicznego dumpu lub poprawnego backupu PostgreSQL. Snapshot Proxmox bez quiesce nie zastępuje regularnie testowanej kopii aplikacyjnej.
 
 ## Odtwarzanie — zawsze najpierw próba
 
 1. Przygotuj odizolowany LXC/VM z tą samą wersją obrazów i kopią repozytorium. Nie kieruj na niego domeny produkcyjnej i zablokuj SMTP podczas próby.
-2. Użyj zachowanych sekretów. Odtwórz klucze `db-config` w odpowiednim wolumenie oraz oba katalogi Storage w `data/`. Nie pomijaj `storage-metadata/`; przejście z powrotem na oficjalny backend xattr wymaga osobnego odtworzenia atrybutów na wspieranym systemie plików.
+2. Użyj zachowanych sekretów. Odtwórz klucze `db-config` w odpowiednim wolumenie oraz `data/storage/` razem z xattr. Historyczne backupy wykonane podczas używania adaptera JSON wymagają odtworzenia zapisanych w nich wartości jako natywnych xattr; samo skopiowanie tamtych zdjęć nie wystarcza.
 3. Uruchom samo PostgreSQL. Domyślna inicjalizacja Supabase tworzy role/systemowe bazy; pełny dump klastra może zawierać te same role/bazy. Administrator powinien przygotować kontrolowany restore zgodnie z wersją PostgreSQL i sprawdzić każdy konflikt, zamiast ignorować błędy lub wykonywać dump na produkcji. Dla rutynowej eksploatacji przygotuj i zweryfikuj runbook restore dostosowany do wybranego sposobu backupu.
 4. Po przywróceniu SQL uruchom Auth/Storage i pozostały stos. Migrator porówna checksumy; nie powinien ponownie wykonywać już zapisanych migracji.
 5. Sprawdź logowanie istniejącego użytkownika, listę garderób, odczyt kilku zdjęć i polityki dostępu drugiego użytkownika. Sprawdź losowe zdjęcia po nazwach obiektów, nie tylko liczbę rekordów.

@@ -16,7 +16,9 @@ Otwórz **http://localhost:8080**, utwórz konto, garderobę i dodaj pierwsze ub
 
 Domyślna konfiguracja lokalna pozwala rejestrować konta bez potwierdzenia email. Reset email wymaga SMTP. Dla LAN/HTTPS ustaw spójnie APP_ORIGIN, SITE_URL, SUPABASE_PUBLIC_URL, API_EXTERNAL_URL i COOKIE_SECURE zgodnie z [instrukcją wdrożenia](docs/deployment-proxmox.md).
 
-`migrate` kończy pracę kodem 0 po zastosowaniu migracji — nie jest stale działającym kontenerem. Dane pozostają w named volumes po restartach. Nie wykonuj `docker compose down -v` na instalacji z danymi.
+`migrate` kończy pracę kodem 0 po zastosowaniu migracji — nie jest stale działającym kontenerem. PostgreSQL i Redis korzystają z named volumes, zdjęcia z `./data/storage/`. Nie wykonuj `docker compose down -v` na instalacji z danymi.
+
+Na **macOS używaj OrbStack** (`docker context use orbstack`): standardowy backend Supabase Storage wymaga działających linuksowych xattr na katalogu zdjęć. Bieżące współdzielenie katalogów Docker Desktop nie spełnia tego warunku. Zmiana kontekstu nie przenosi istniejących wolumenów — działającą instalację trzeba najpierw bezpiecznie zmigrować. Szczegóły: [Storage i xattr](infra/storage/README.md).
 
 ## Działający zakres fazy 1
 
@@ -72,7 +74,6 @@ Analiza ubrań działa domyślnie lokalnie na CPU przez FashionSigLIP (`GARMENT_
 Supabase Studio: http://localhost:8000 (wyłącznie 127.0.0.1). Logowanie administracyjne: `DASHBOARD_USERNAME` i `DASHBOARD_PASSWORD` z lokalnego `.env`, nie konto aplikacji. Studio startuje automatycznie z `docker compose up -d`; istniejący oficjalny gateway wymaga Basic Auth. Nie udostępniaj tego portu przez tunel lub publiczny reverse proxy.
 
 Dostęp z telefonu w LAN: otwórz `http://<IP-laptopa>:8080` i dodaj ten dokładny origin do `APP_ADDITIONAL_ORIGINS` w `.env` (lista oddzielona przecinkami). `APP_ORIGIN` pozostaje głównym adresem aplikacji. Po zmianie odtwórz tylko API: `docker compose up -d --no-deps api`. Nie stosuj wildcardów. Przy zmianie adresu IP laptopa zaktualizuj listę. `COOKIE_SECURE=false` dotyczy lokalnego HTTP; dla wdrożenia HTTPS używaj `true`.
-
 
 ## Ciepłota i automatyzacja metadanych
 
