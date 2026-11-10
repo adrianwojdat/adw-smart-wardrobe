@@ -19,15 +19,8 @@ c.services.db.networks = ['default', 'database-access'];
 c.services.db.volumes = c.services.db.volumes.map((v) =>
   v.includes('/db/data:') ? 'postgres-data:/var/lib/postgresql/data' : v,
 );
-// Plain image files on the host; sidecars replace unsupported macOS Linux xattrs.
-// See infra/storage-sidecars/README.md before upgrading the pinned Storage image.
-c.services.storage.image = 'smart-wardrobe-storage:sidecars-v1';
-c.services.storage.build = { context: './infra/storage-sidecars' };
-c.services.storage.environment.FILE_STORAGE_METADATA_PATH = '/var/lib/storage-metadata';
-c.services.storage.volumes = [
-  './data/storage:/var/lib/storage',
-  './data/storage-metadata:/var/lib/storage-metadata',
-];
+// Native file backend: macOS requires an engine with working Linux xattrs (OrbStack).
+c.services.storage.volumes = ['./data/storage:/var/lib/storage'];
 c.services.imgproxy.volumes = ['./data/storage:/var/lib/storage:ro'];
 c.services.studio.volumes = [
   'studio-snippets:/app/snippets',

@@ -94,10 +94,6 @@ async function main() {
   await backend.abortMultipartUpload('probe', 'aborted.png', abort, 'v4');
   // Completion removes temporary multipart files asynchronously in upstream code.
   await new Promise((r) => setTimeout(r, 100));
-  const sidecars = fs
-    .readdirSync(process.env.FILE_STORAGE_METADATA_PATH)
-    .filter((name) => name.endsWith('.json'));
-  assert.equal(sidecars.length, 2);
   console.log(
     JSON.stringify({
       upload: true,
@@ -109,7 +105,7 @@ async function main() {
       contentEncoding: true,
       multipart: true,
       abort: true,
-      sidecars: sidecars.length,
+      nativeAttributes: true,
     }),
   );
 }

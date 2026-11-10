@@ -237,7 +237,7 @@ services:
         max-size: 10m
         max-file: "3"
   storage:
-    image: smart-wardrobe-storage:sidecars-v1
+    image: supabase/storage-api:v1.89.12
     restart: unless-stopped
     depends_on:
       db:
@@ -276,17 +276,13 @@ services:
       IMGPROXY_URL: http://imgproxy:5001
       S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
       S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
-      FILE_STORAGE_METADATA_PATH: /var/lib/storage-metadata
     volumes:
       - ./data/storage:/var/lib/storage
-      - ./data/storage-metadata:/var/lib/storage-metadata
     logging:
       driver: json-file
       options:
         max-size: 10m
         max-file: "3"
-    build:
-      context: ./infra/storage-sidecars
   imgproxy:
     image: darthsim/imgproxy:v4.0.21
     restart: unless-stopped
