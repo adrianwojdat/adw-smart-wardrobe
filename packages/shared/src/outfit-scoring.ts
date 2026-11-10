@@ -1,3 +1,4 @@
+import { shoeDecision } from './outfit-shoes.js';
 import { paletteValue, patternValue } from './outfit-colors.js';
 import type { Garment } from './index.js';
 export const scoreWeights = {
@@ -84,13 +85,15 @@ export function evaluateOutfit(
     garment_ids: clothes.map((g) => g.id),
     value: patternValue(clothes),
   });
+  const footwear = shoeDecision(items, occasion, temperature);
+  trace.push(footwear);
   const values = {
     style: trace[0]!.value,
     occasion: trace[1]!.value,
     thermal: trace[2]!.value,
     color: palette.value,
     pattern: patternValue(clothes),
-    shoes: 0,
+    shoes: footwear.value,
     accessories: 0,
     diversity: 0,
   };

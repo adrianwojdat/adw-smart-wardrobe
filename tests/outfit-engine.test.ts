@@ -70,3 +70,24 @@ it('penalizes unknown palettes and multiple patterns', async () => {
     patternValue(known.map((g) => ({ ...g, pattern: 'paski' }))),
   );
 });
+
+it('ranks compatible footwear and rejects sandals in cold weather', async () => {
+  const { shoeDecision } = await import('../packages/shared/src/outfit-shoes');
+  const pants = item(2, 'bottoms', { style: 'formalny' });
+  expect(
+    shoeDecision([pants, item(3, 'shoes', { style: 'formalny' })], 'office', 18).value,
+  ).toBeGreaterThan(
+    shoeDecision([pants, item(3, 'shoes', { style: 'sportowy' })], 'office', 18).value,
+  );
+  expect(
+    thermalCompatible(
+      [
+        item(1, 'tops'),
+        pants,
+        item(3, 'shoes', { subcategory: 'Sandały' }),
+        item(4, 'outerwear', { subcategory: 'Kurtka zimowa', warmth: 5 }),
+      ],
+      0,
+    ),
+  ).toBe(false);
+});

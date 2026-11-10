@@ -37,6 +37,11 @@ export function thermalCompatible(items: Garment[], temperature: number): boolea
   )
     return false;
   if (temperature >= 12 && temperature < 16 && !mid && !outer) return false;
+  if (
+    temperature < 12 &&
+    items.some((g) => g.category === 'shoes' && /sanda|klapk|flip.flop/i.test(g.subcategory))
+  )
+    return false;
   if (temperature >= 22 && outer) return false;
   if (
     temperature >= 26 &&
@@ -82,8 +87,10 @@ export function generateOutfits(
       }
     plans.sort((a, b) => a.length - b.length);
     for (const plan of plans.slice(0, 2))
-      for (const shoe of shoes.length ? shoes : [undefined])
-        result.push([...plan, ...(shoe ? [shoe] : [])]);
+      for (const shoe of shoes.length ? shoes : [undefined]) {
+        const candidate = [...plan, ...(shoe ? [shoe] : [])];
+        if (thermalCompatible(candidate, temperature)) result.push(candidate);
+      }
   }
   return result
     .sort(
