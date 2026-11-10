@@ -27,8 +27,9 @@ start the same installation in two engines against the shared image directory.
 
 The migration retained the previous Docker Desktop containers/volumes and private
 backups. They are frozen recovery points, not synchronized copies. The former
-`data/storage-metadata/` JSON directory is retained only for recovery; the running
-Storage does not mount it and no longer updates it. No metadata adapter remains
+`data/storage-metadata/` JSON directory and inactive image copy were removed at
+the user's request after migration; their independent backup archives remain.
+No metadata adapter remains
 in the application. To roll back after new writes, first transfer current database,
 Redis, image files and required metadata; do not simply start the older database.
 

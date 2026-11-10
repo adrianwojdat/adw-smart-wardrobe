@@ -4,7 +4,7 @@
 
 PostgreSQL (wszystkie bazy, role, auth, storage metadata i schemat private), `data/storage/` **wraz z atrybutami xattr**, `db-config` (klucze pgsodium), `.env`, wersję repozytorium i lockfile. `caddy-data` zawiera certyfikaty. Redis używa AOF w `redis-data`; stan biznesowy zadań jest również w PostgreSQL. Sama kopia SQL nie zawiera zdjęć, a kopia samych bajtów zdjęć nie zawiera ich metadanych HTTP. Stare wolumeny Docker Desktop są zachowane jako punkt odzyskiwania; aktywne PostgreSQL i Redis działają w OrbStack, zdjęcia w katalogu projektu.
 
-Na macOS używamy OrbStack i niezmodyfikowanego oficjalnego Storage z natywnymi xattr: [infra/storage/README.md](../infra/storage/README.md). Dawny katalog JSON `data/storage-metadata/` jest tylko zachowaną kopią do odzyskiwania; nie uczestniczy już w działaniu aplikacji. Nie edytuj plików zdjęć ani atrybutów ręcznie. Supabase zachowuje strukturę ścieżek i identyfikatory wersji, więc plik obrazu może mieć nazwę UUID bez rozszerzenia.
+Na macOS używamy OrbStack i niezmodyfikowanego oficjalnego Storage z natywnymi xattr: [infra/storage/README.md](../infra/storage/README.md). Dawny katalog JSON `data/storage-metadata/` oraz nieaktywną kopię zdjęć usunięto na żądanie użytkownika; pozostały w niezależnych archiwach backupu w `investigation/backups/`. Nie edytuj plików zdjęć ani atrybutów ręcznie. Supabase zachowuje strukturę ścieżek i identyfikatory wersji, więc plik obrazu może mieć nazwę UUID bez rozszerzenia.
 
 ## Spójna kopia
 
