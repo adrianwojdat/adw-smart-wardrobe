@@ -1,3 +1,4 @@
+import { paletteValue, patternValue } from './outfit-colors.js';
 import type { Garment } from './index.js';
 export const scoreWeights = {
   style: 20,
@@ -71,12 +72,24 @@ export function evaluateOutfit(
       reason: `Układ warstw przeszedł reguły dla ${temperature}°C; odczuwalny komfort zależy od warunków.`,
     },
   ];
+  const palette = paletteValue(clothes);
+  trace.push({
+    rule: 'color.palette',
+    garment_ids: clothes.map((g) => g.id),
+    value: palette.value,
+    ...(palette.neutral ? { reason: 'Rozpoznane kolory tworzą neutralną paletę.' } : {}),
+  });
+  trace.push({
+    rule: 'pattern.combination',
+    garment_ids: clothes.map((g) => g.id),
+    value: patternValue(clothes),
+  });
   const values = {
     style: trace[0]!.value,
     occasion: trace[1]!.value,
     thermal: trace[2]!.value,
-    color: 0.25,
-    pattern: 0.25,
+    color: palette.value,
+    pattern: patternValue(clothes),
     shoes: 0,
     accessories: 0,
     diversity: 0,

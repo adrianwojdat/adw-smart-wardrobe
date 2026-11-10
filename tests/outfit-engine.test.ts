@@ -56,3 +56,17 @@ it('scores known compatible styles above missing data without forbidding mixture
     ]).value,
   ).toBeGreaterThan(0);
 });
+
+it('penalizes unknown palettes and multiple patterns', async () => {
+  const { paletteValue, patternValue } = await import('../packages/shared/src/outfit-colors');
+  const known = [
+    item(1, 'tops', { primary_color: 'biały', pattern: 'gładki' }),
+    item(2, 'bottoms', { primary_color: 'granatowy', pattern: 'gładki' }),
+  ];
+  expect(paletteValue(known).value).toBeGreaterThan(
+    paletteValue([item(1, 'tops'), item(2, 'bottoms')]).value,
+  );
+  expect(patternValue(known)).toBeGreaterThan(
+    patternValue(known.map((g) => ({ ...g, pattern: 'paski' }))),
+  );
+});
