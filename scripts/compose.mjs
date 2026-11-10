@@ -19,8 +19,16 @@ c.services.db.networks = ['default', 'database-access'];
 c.services.db.volumes = c.services.db.volumes.map((v) =>
   v.includes('/db/data:') ? 'postgres-data:/var/lib/postgresql/data' : v,
 );
-c.services.storage.volumes = ['storage-data:/var/lib/storage'];
-c.services.imgproxy.volumes = ['storage-data:/var/lib/storage:ro'];
+// Plain image files on the host; sidecars replace unsupported macOS Linux xattrs.
+// See infra/storage-sidecars/README.md before upgrading the pinned Storage image.
+c.services.storage.image = 'smart-wardrobe-storage:sidecars-v1';
+c.services.storage.build = { context: './infra/storage-sidecars' };
+c.services.storage.environment.FILE_STORAGE_METADATA_PATH = '/var/lib/storage-metadata';
+c.services.storage.volumes = [
+  './data/storage:/var/lib/storage',
+  './data/storage-metadata:/var/lib/storage-metadata',
+];
+c.services.imgproxy.volumes = ['./data/storage:/var/lib/storage:ro'];
 c.services.studio.volumes = [
   'studio-snippets:/app/snippets',
   './infra/supabase/volumes/functions:/app/edge-functions:ro',
