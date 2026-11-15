@@ -35,7 +35,7 @@ services:
       AUTH_JWT_SECRET: ${JWT_SECRET}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
       SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY}
-      ENABLED_FEATURES_LOGS_ALL: "false"
+      ENABLED_FEATURES_LOGS_ALL: 'false'
       SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
       EDGE_FUNCTIONS_MANAGEMENT_FOLDER: /app/edge-functions
     volumes:
@@ -45,7 +45,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
   api-gw:
     image: envoyproxy/envoy:v1.39.6
     restart: unless-stopped
@@ -87,7 +87,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
     ports:
       - 127.0.0.1:8000:8000
   auth:
@@ -155,7 +155,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
     build:
       context: ./infra/auth-email
     init: true
@@ -187,7 +187,7 @@ services:
       PGRST_ADMIN_SERVER_PORT: 3001
       PGRST_ADMIN_SERVER_HOST: localhost
       PGRST_JWT_SECRET: ${JWT_JWKS:-${JWT_SECRET}}
-      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_DB_USE_LEGACY_GUCS: 'false'
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
     command:
       - postgrest
@@ -195,7 +195,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
   realtime:
     container_name: realtime-dev.supabase-realtime
     image: supabase/realtime:v2.148.3
@@ -226,16 +226,16 @@ services:
       METRICS_JWT_SECRET: ${JWT_SECRET}
       ERL_AFLAGS: -proto_dist inet_tcp
       DNS_NODES: "''"
-      RLIMIT_NOFILE: "10000"
+      RLIMIT_NOFILE: '10000'
       APP_NAME: realtime
-      SEED_SELF_HOST: "true"
-      RUN_JANITOR: "true"
-      DISABLE_HEALTHCHECK_LOGGING: "true"
+      SEED_SELF_HOST: 'true'
+      RUN_JANITOR: 'true'
+      DISABLE_HEALTHCHECK_LOGGING: 'true'
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
   storage:
     image: supabase/storage-api:v1.89.12
     restart: unless-stopped
@@ -265,14 +265,14 @@ services:
       AUTH_JWT_SECRET: ${JWT_SECRET}
       DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       STORAGE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
-      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      REQUEST_ALLOW_X_FORWARDED_PATH: 'true'
       FILE_SIZE_LIMIT: 10485760
       STORAGE_BACKEND: file
       GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET}
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
       TENANT_ID: ${STORAGE_TENANT_ID}
       REGION: ${REGION}
-      ENABLE_IMAGE_TRANSFORMATION: "true"
+      ENABLE_IMAGE_TRANSFORMATION: 'true'
       IMGPROXY_URL: http://imgproxy:5001
       S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
       S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
@@ -282,7 +282,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
   imgproxy:
     image: darthsim/imgproxy:v4.0.21
     restart: unless-stopped
@@ -299,14 +299,14 @@ services:
     environment:
       IMGPROXY_BIND: :5001
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
-      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_USE_ETAG: 'true'
       IMGPROXY_AUTO_WEBP: ${IMGPROXY_AUTO_WEBP}
       IMGPROXY_MAX_SRC_RESOLUTION: 16.8
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
   meta:
     image: supabase/postgres-meta:v0.100.0
     restart: unless-stopped
@@ -325,7 +325,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
   functions:
     image: supabase/edge-runtime:v1.77.9
     mem_limit: ${FUNCTIONS_MEMORY_LIMIT:-2g}
@@ -356,14 +356,14 @@ services:
     command:
       - start
       - --user-worker-request-idle-timeout
-      - "150000"
+      - '150000'
       - --main-service
       - /home/deno/functions/main
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
     networks:
       - default
       - egress
@@ -410,7 +410,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
     ports:
       - 127.0.0.1:54322:5432
     networks:
@@ -444,7 +444,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_URL: ecto://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
-      CLUSTER_POSTGRES: "true"
+      CLUSTER_POSTGRES: 'true'
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       VAULT_ENC_KEY: ${VAULT_ENC_KEY}
       API_JWT_SECRET: ${JWT_SECRET}
@@ -464,7 +464,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
   redis:
     image: redis:8.2.3-alpine
     restart: unless-stopped
@@ -495,7 +495,7 @@ services:
       - default
       - egress
     environment:
-      DEV_MAIL_RELAY: "true"
+      DEV_MAIL_RELAY: 'true'
       DEV_SMTP_HOST: ${DEV_SMTP_HOST:-host.docker.internal}
       DEV_SMTP_PORT: ${DEV_SMTP_PORT:-1025}
       DEV_SMTP_USER: ${DEV_SMTP_USER:-}
@@ -522,7 +522,7 @@ services:
       - node
       - --import
       - tsx
-      - apps/api/src/migrate.ts
+      - apps/api/src/app/migrate.ts
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
       SESSION_DB_PASSWORD: ${SESSION_DB_PASSWORD}
@@ -549,6 +549,12 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SESSION_DATABASE_URL: postgresql://wardrobe_session:${SESSION_DB_PASSWORD}@db:5432/postgres
       SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY}
+      GEMINI_ENCRYPTION_KEY: ${GEMINI_ENCRYPTION_KEY:-}
+      GEMINI_RPM_LIMIT: ${GEMINI_RPM_LIMIT:-12}
+      GEMINI_MAX_QUEUE: ${GEMINI_MAX_QUEUE:-100}
+      GEMINI_SHARED_QUOTA_ID: ${GEMINI_SHARED_QUOTA_ID:-}
+      GEMINI_TPM_LIMIT: ${GEMINI_TPM_LIMIT:-}
+      GEMINI_RPD_LIMIT: ${GEMINI_RPD_LIMIT:-}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       QUEUE_ADMIN_USER_IDS: ${QUEUE_ADMIN_USER_IDS:-}
       SMTP_ENABLED: ${SMTP_HOST:-}
@@ -596,6 +602,12 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-}
+      GEMINI_ENCRYPTION_KEY: ${GEMINI_ENCRYPTION_KEY:-}
+      GEMINI_RPM_LIMIT: ${GEMINI_RPM_LIMIT:-12}
+      GEMINI_SHARED_QUOTA_ID: ${GEMINI_SHARED_QUOTA_ID:-}
+      GEMINI_TASK_TIMEOUT_MS: ${GEMINI_TASK_TIMEOUT_MS:-900000}
+      GEMINI_TPM_LIMIT: ${GEMINI_TPM_LIMIT:-}
+      GEMINI_RPD_LIMIT: ${GEMINI_RPD_LIMIT:-}
       NODE_OPTIONS: --max-old-space-size=256
     depends_on:
       migrate:

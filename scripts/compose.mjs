@@ -1,8 +1,11 @@
 // Reproducible adaptation of the pinned official Compose. Never fetches latest.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { parse, stringify } from 'yaml';
+
 const c = parse(readFileSync('infra/supabase/upstream-compose.yml', 'utf8'));
+
 c.name = 'smart-wardrobe';
+
 for (const [name, s] of Object.entries(c.services)) {
   if (name !== 'realtime') delete s.container_name;
   delete s.ports;
@@ -10,6 +13,7 @@ for (const [name, s] of Object.entries(c.services)) {
   if (s.volumes)
     s.volumes = s.volumes.map((v) => v.replace('./volumes/', './infra/supabase/volumes/'));
 }
+
 // Local administrator access for Postico; never bind PostgreSQL on all interfaces.
 c.services.db.ports = ['127.0.0.1:54322:5432'];
 // Official gateway protects Studio with existing DASHBOARD credentials; loopback only.
@@ -35,20 +39,25 @@ c.services.auth.image = 'smart-wardrobe-auth:gotrue-v2.197.0';
 c.services.auth.build = { context: './infra/auth-email' };
 c.services.auth.init = true;
 c.services.auth.volumes = ['./infra/auth-email/templates:/email-templates:ro'];
+
 for (const [type, subject] of Object.entries(
   JSON.parse(readFileSync('infra/auth-email/content.pl-PL.json', 'utf8')),
 )) {
   const suffix = type.toUpperCase();
+
   c.services.auth.environment['GOTRUE_MAILER_SUBJECTS_' + suffix] = subject.subject;
   c.services.auth.environment['GOTRUE_MAILER_TEMPLATES_' + suffix] =
     'http://127.0.0.1:8089/pl-PL/' + type + '.html';
 }
+
 c.services.auth.environment.GOTRUE_PASSWORD_MIN_LENGTH = 12;
 c.services.auth.environment.GOTRUE_SECURITY_REFRESH_TOKEN_REUSE_INTERVAL = 10;
 c.services.functions.networks = ['default', 'egress']; // Official runtime downloads pinned Deno imports on first boot.
 c.services.auth.networks = ['default', 'egress']; // SMTP delivery
 c.services.storage.environment.FILE_SIZE_LIMIT = 10485760;
+
 const health = { interval: '10s', timeout: '5s', retries: 10, start_period: '30s' };
+
 c.services.redis = {
   image: 'redis:8.2.3-alpine',
   restart: 'unless-stopped',
@@ -89,6 +98,7 @@ c.services['dev-mail-relay'] = {
     ],
   },
 };
+
 const base = {
   build: { context: '.', dockerfile: 'infra/Dockerfile.node' },
   restart: 'unless-stopped',
@@ -97,10 +107,11 @@ const base = {
 };
 const sessionUrl = 'postgresql://wardrobe_session:${SESSION_DB_PASSWORD}@db:5432/postgres';
 const workerUrl = 'postgresql://wardrobe_worker:${WORKER_DB_PASSWORD}@db:5432/postgres';
+
 c.services.migrate = {
   ...base,
   restart: 'no',
-  command: ['node', '--import', 'tsx', 'apps/api/src/migrate.ts'],
+  command: ['node', '--import', 'tsx', 'apps/api/src/app/migrate.ts'],
   environment: {
     DATABASE_URL: 'postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres',
     SESSION_DB_PASSWORD: '${SESSION_DB_PASSWORD}',

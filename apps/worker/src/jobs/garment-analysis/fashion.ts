@@ -1,7 +1,8 @@
-import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import type * as ORT from 'onnxruntime-node';
 import sharp from 'sharp';
+
 import { aiAnalysisSchema, localizeAnalysis } from '@wardrobe/shared';
 
 type Prototype = { en: string; pl: string; vector: number[] };
@@ -11,19 +12,24 @@ type Config = {
   locale: string;
   groups: Record<'category' | 'color' | 'pattern', Prototype[]>;
 };
+
 const directory = new URL('../../../infra/models/fashion-siglip/', import.meta.url);
 let loaded: Promise<{ session: ORT.InferenceSession; config: Config }> | undefined;
+
 export function fashionEnabled() {
   return (process.env.GARMENT_ANALYSIS_PROVIDER ?? 'fashion-siglip') === 'fashion-siglip';
 }
+
 async function engine() {
   return (loaded ??= (async () => {
     const config = JSON.parse(
       await readFile(new URL('prototypes.json', directory), 'utf8'),
     ) as Config;
     const bytes = await readFile(new URL('vision.onnx', directory));
+
     if (createHash('sha256').update(bytes).digest('hex') !== config.sha256)
-      throw Error('Nieprawidłowa suma kontrolna FashionSigLIP.');
+      throw Error('Invalid FashionSigLIP checksum.');
+
     const ort = await import('onnxruntime-node');
     const session = await ort.InferenceSession.create(bytes, {
       executionProviders: ['cpu'],
@@ -31,12 +37,16 @@ async function engine() {
       interOpNumThreads: 1,
       graphOptimizationLevel: 'all',
     });
+
     return { session, config };
   })());
 }
+
 export function rankFashion(feature: ArrayLike<number>, labels: Prototype[]): Ranking {
   const norm = Math.hypot(...Array.from(feature));
-  if (!norm || !Number.isFinite(norm)) throw Error('Nieprawidłowy embedding FashionSigLIP.');
+
+  if (!norm || !Number.isFinite(norm)) throw Error('Invalid FashionSigLIP embedding.');
+
   return labels
     .map((p) => ({
       label: p.en,
@@ -47,6 +57,7 @@ export function rankFashion(feature: ArrayLike<number>, labels: Prototype[]): Ra
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 }
+
 const categories: Record<string, string> = {
   trousers: 'bottoms',
   jeans: 'bottoms',
@@ -61,6 +72,7 @@ const categories: Record<string, string> = {
   scarf: 'accessories',
   cap: 'accessories',
 };
+
 export async function analyzeFashion(
   original: Buffer,
   rotation: number | null = null,
@@ -77,9 +89,11 @@ export async function analyzeFashion(
     .png()
     .toBuffer();
   let best: { category: Ranking; color: Ranking; pattern: Ranking } | undefined;
+
   // Pool category scores across rotations, never use them to rotate the stored image.
   for (const angle of rotation === null ? [0, 90, 180, 270] : [rotation]) {
     signal?.throwIfAborted();
+
     const pixels = await sharp(normalized)
       .rotate(angle)
       .resize(224, 224, { fit: 'fill', kernel: 'cubic' })
@@ -87,16 +101,23 @@ export async function analyzeFashion(
       .raw()
       .toBuffer();
     const input = new Float32Array(3 * 224 * 224);
+
     for (let i = 0; i < 224 * 224; i++)
       for (let c = 0; c < 3; c++) input[c * 224 * 224 + i] = pixels[i * 3 + c]! / 127.5 - 1;
+
     const output = await session.run({
       [session.inputNames[0]!]: new ort.Tensor('float32', input, [1, 3, 224, 224]),
     });
+
     signal?.throwIfAborted();
+
     const tensor = output[session.outputNames[0]!]!;
-    if (tensor.data.length !== 768) throw Error('Nieprawidłowy wymiar embeddingu FashionSigLIP.');
+
+    if (tensor.data.length !== 768) throw Error('Invalid FashionSigLIP embedding dimension.');
+
     const feature = tensor.data as Float32Array;
     const category = rankFashion(feature, config.groups.category);
+
     if (!best || category[0]!.score > best.category[0]!.score)
       best = {
         category,
@@ -104,13 +125,15 @@ export async function analyzeFashion(
         pattern: rankFashion(feature, config.groups.pattern),
       };
   }
+
   const found = best!;
+
   return localizeAnalysis(
     aiAnalysisSchema.parse({
       source: 'photo',
       confidence: 0,
       uncertainties: [
-        'Sprawdź kategorię, kolor i wzór. Podobieństwo modelu nie jest procentem pewności.',
+        'Review the category, color and pattern. Model similarity is not a confidence percentage.',
       ],
       suggestions: {
         pattern: found.pattern[0]!.label_pl,
