@@ -1,3 +1,5 @@
+-- ARCHIVED DESIGN DRAFT — NOT A MIGRATION. DO NOT APPLY.
+-- See docs/archive/README.md for its status and the authoritative migrations.
 -- HISTORICAL PROPOSAL — DO NOT APPLY.
 -- Superseded by narrowly scoped functions in migrations 0009, 0013 and 0014.
 /*

@@ -1,3 +1,5 @@
+-- ARCHIVED DESIGN DRAFT — NOT A MIGRATION. DO NOT APPLY.
+-- See docs/archive/README.md for its status and the authoritative migrations.
 -- Proposal only. Do not move into supabase/migrations or apply before approval.
 -- Additive migration for wardrobe-scoped garment properties.
 

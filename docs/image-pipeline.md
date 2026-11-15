@@ -18,7 +18,7 @@ Remote PC configuration (example values, not automatic model selection):
 
 ```dotenv
 OLLAMA_BASE_URL=http://192.168.1.80:11434
-OLLAMA_VISION_MODEL=nazwa-juz-zainstalowanego-modelu-vision
+OLLAMA_VISION_MODEL=existing-vision-model
 ```
 
 Worker calls `/api/chat`, never `/api/pull`. Local segmentation is not a vision LLM. Empty settings, a missing model, or an unavailable PC leave analysis jobs in PostgreSQL/BullMQ, retrying every 60 seconds. `wardrobe` and `wardrobe-ai` are separate queues. Validated garment/label suggestions are saved with the image; the user selects fields and approves applying them. Material and size are not accepted from garment-photo analysis. Label OCR uses the remote vision model; disabled Ollama does not produce pretend local OCR.

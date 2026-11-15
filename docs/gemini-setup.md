@@ -8,7 +8,7 @@ Keep this value with deployment secret backups. Do not rotate it without plannin
 
 ## Database migration
 
-Additive Gemini configuration/permission migrations `0017`–`0020` were applied to the local development database. A PostgreSQL archive in `investigation/backups/gemini-migration/postgres-before-0017.dump` was created and verified first; migration history was checked before each step. Two synthetic users tested RLS, queueing, BFF save/delete, and denial of ciphertext access successfully in a rolled-back transaction. Direct PostgREST DML on `gemini_credentials` is revoked; API changes use private SQL functions accessible only to `wardrobe_session`. The `0017` draft remains in `docs/proposed-migrations/`.
+Additive Gemini configuration/permission migrations `0017`–`0020` were applied to the local development database. A PostgreSQL archive in `investigation/backups/gemini-migration/postgres-before-0017.dump` was created and verified first; migration history was checked before each step. Two synthetic users tested RLS, queueing, BFF save/delete, and denial of ciphertext access successfully in a rolled-back transaction. Direct PostgREST DML on `gemini_credentials` is revoked; API changes use private SQL functions accessible only to `wardrobe_session`. The historical `0017` draft is archived at [`archive/sql-proposals/gemini-configuration.sql`](archive/sql-proposals/gemini-configuration.sql); deployed migrations and later permission fixes are authoritative.
 
 Only `api`, `worker`, and `web` were built/recreated. Other services, accounts, user data, and volumes were unchanged. Ollama and the outfit generator did not require changes.
 

@@ -1,3 +1,5 @@
+-- ARCHIVED DESIGN DRAFT — NOT A MIGRATION. DO NOT APPLY.
+-- See docs/archive/README.md for its status and the authoritative migrations.
 -- Gemini credentials are encrypted by the BFF and never returned to clients.
 create table public.gemini_credentials (
   user_id uuid primary key references auth.users(id) on delete cascade,

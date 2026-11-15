@@ -1,3 +1,5 @@
+-- ARCHIVED UNAPPLIED PROPOSAL — NOT A MIGRATION. DO NOT APPLY.
+-- Requires a new data audit and approval before implementation; see docs/archive/README.md.
 -- Historical pending proposal; not applied by project cleanup.
 -- Inspect existing data and obtain approval before applying these constraints.
 -- The privileged worker must never download an original path supplied for another object.

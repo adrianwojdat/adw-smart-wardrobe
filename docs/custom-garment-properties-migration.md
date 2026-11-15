@@ -1,10 +1,10 @@
 # Custom garment properties — schema and deployment
 
-## Ustalenia ze schematu
+## Schema findings
 
 `public.garments` has fixed system columns and RLS based on `wardrobe_id`; the UI/API update garments through the user session. At this design snapshot, field-definition and custom-value tables did not yet exist. `cleanliness` describes laundry status rather than wear condition. Migrations are transactional, ordered, and SHA-256-verified; the migrator applies all files in `supabase/migrations` at startup.
 
-## Proponowane przechowywanie
+## Proposed storage
 
 - `garment_property_definitions`: name, type, ordering, and visibility shared within a wardrobe.
 - `garment_property_options`: reusable select/multi-select options; normalized names are unique within each field.
@@ -15,7 +15,7 @@ API validates JSONB against the definition’s type. Amounts use `{amount, curre
 
 ## Migration effects
 
-The additive migration adds `wear_condition` with `unknown` for existing/new garments, plus three tables, indexes, foreign keys, grants, and RLS policies. It does not change existing columns, photos, wardrobes, or metadata values. The deployed migration is `supabase/migrations/0015_custom_garment_properties.sql`; its review draft remains in `custom-garment-properties-migration-proposal.sql`.
+The additive migration adds `wear_condition` with `unknown` for existing/new garments, plus three tables, indexes, foreign keys, grants, and RLS policies. It does not change existing columns, photos, wardrobes, or metadata values. The deployed migration is `supabase/migrations/0015_custom_garment_properties.sql`; its review draft remains in [`archive/sql-proposals/custom-garment-properties.sql`](archive/sql-proposals/custom-garment-properties.sql).
 
 The transactional checksum-verified migrator applied the migration. RLS was tested with two temporary users in a transaction ending with `ROLLBACK`. Only API/web were built/recreated and both are healthy. UI CRUD has a mocked-API Playwright test. The full live BFF test stopped at registration-email delivery through the existing SMTP relay, before reaching custom-property endpoints; SMTP was not changed.
 
