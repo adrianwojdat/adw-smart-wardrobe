@@ -38,13 +38,15 @@ Install Chromium using `pnpm exec playwright install chromium` if needed. `playw
 
 Use Node 26.13.0 (26 LTS line), pnpm 12.18.0, Docker Engine/Compose on Linux, or the verified OrbStack setup on macOS. CPU model files must be prepared as described in [model setup](../../infra/models/README.md) and [FashionSigLIP](../../infra/models/fashion-siglip/README.md). Git does not include weights. Do not assume the full stack fits in 4 GB RAM.
 
-For a **new installation**, run `node scripts/setup.mjs`, review the generated local `.env`, then `docker compose up -d --build`. Setup will not overwrite an existing `.env`; do not replace secrets on an existing data volume. Compose owns the whole Supabase stack. The `migrate` service exits after success and is not a daemon. Follow the root [getting started](../../README.md#getting-started) section for addresses and Mac xattr prerequisites.
+For a **new production installation**, run `node scripts/setup.mjs`, review the generated local `.env`, prepare the required CPU weights, then `docker compose -f docker-compose.prod.yml up -d --build`. The full development/admin stack uses `docker compose -f docker-compose.yml up -d --build` instead; never merge both files. Setup will not overwrite an existing `.env`; do not replace secrets on an existing data volume. Compose owns the whole Supabase stack. The `migrate` service exits after success and is not a daemon. Follow the root [getting started](../../README.md#getting-started) section for addresses and Mac xattr prerequisites.
 
 Install dependencies with `pnpm install --frozen-lockfile`. `pnpm dev` starts only Vite on 5173. Its `/api` proxy targets `http://localhost:3000`; it does not start the API/worker. `pnpm --filter @wardrobe/api dev` and `pnpm --filter @wardrobe/worker dev` watch their process entries, but require complete process environment and reachable infrastructure. The root `.env` is primarily Compose input and these commands do not automatically load/translate every Compose variable. Inspect `apps/api/src/app/config.ts`, worker startup validation, and the generated Compose environment. In host mode, container service names such as `db`, `api-gw` and `redis` need deliberately configured reachable addresses. Do not publish privileged services to the LAN to make host development work.
 
 For the simplest consistent development environment, rebuild affected Compose services with the existing full stack. A local-only debugging override may publish API port 3000 on **127.0.0.1** for Vite; do not add a public bind to committed Compose. API origin checks must include the exact development frontend origin. No checked-in dev override or universal host-mode env-loader script is provided.
 
 ### Common development commands
+
+The bare Compose commands in this table select the full development stack. For production, use the explicit production commands in the final section and root README.
 
 | Task                          | Command                                             | Description                                                                           |
 | ----------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -98,9 +100,9 @@ For a new variable, add a non-secret template/comment to `.env.example`, validat
 
 ## Deployment and updates
 
-Deployment uses the root Compose stack on a self-hosted server; [Proxmox guide](../deployment-proxmox.md) covers that supported host setup. `infra/Dockerfile.node` builds the shared/API/worker sources and copies immutable SQL/model assets. `infra/Dockerfile.web` builds the SPA and Caddy image. There is no implemented automatic application rollback service.
+Production deployment uses the standalone root `docker-compose.prod.yml` on a self-hosted server; [Proxmox guide](../deployment-proxmox.md) covers that supported host setup. `infra/Dockerfile.node` builds the shared/API/worker sources and copies immutable SQL/model assets. `infra/Dockerfile.web` builds the SPA and Caddy image. There is no implemented automatic application rollback service.
 
-Before updating, record the current commit and image IDs, take a consistent verified backup using [operations](../operations.md), review pending SQL and rehearse on an isolated copy. Keep old compatible image versions available. Then use `docker compose up -d --build`; the migrator must succeed before dependent services start. Inspect `docker compose ps`, migration/API/worker logs and `/api/health`, then validate login, several images, owned/foreign-data access, queues and the changed feature. Health alone does not prove every dependency or recommendation is working.
+Before updating, record the current commit and image IDs, take a consistent verified backup using [operations](../operations.md), review pending SQL and rehearse on an isolated copy. Keep old compatible image versions available. Then use `docker compose -f docker-compose.prod.yml up -d --build`; the migrator must succeed before dependent services start. Inspect `docker compose ps`, migration/API/worker logs and `/api/health`, then validate login, several images, owned/foreign-data access, queues and the changed feature. Health alone does not prove every dependency or recommendation is working.
 
 On failure, stop further changes and inspect which migrations committed. Reverting application images/code does not revert schema. Restart a previous application version only if compatible with the current schema; otherwise deploy a reviewed corrective release or follow the rehearsed recovery procedure. Never erase migration history, replace entire tables, regenerate secrets or delete volumes to make an older image start. PostgreSQL major-version changes require their own upstream upgrade plan.
 
@@ -122,3 +124,9 @@ On failure, stop further changes and inspect which migrations committed. Reverti
 | Old UI after deployment            | Cached static shell/PWA update pending                                                            | Use the app's update notification; API/private images must remain NetworkOnly                                                |
 
 For additional operational procedures and explicit recovery limitations, use [operations](../operations.md). Never reset the database as routine troubleshooting.
+
+## Production Compose selection
+
+Use `docker compose -f docker-compose.prod.yml` consistently for production start, stop, logs, exec and configuration checks. The generic commands in the local-development table use the full default file. Production excludes Studio/meta, Realtime, Edge Runtime, Supavisor and dev-mail; the existing CPU and Gemini features remain in the core worker. Never layer the full and production files, because Compose merging would restore omitted services.
+
+`node scripts/compose.mjs` regenerates both variants and the production gateway files; `node scripts/compose.mjs --check` verifies them without writing. The generator preserves the existing Gemini encryption, limiter, queue and timeout settings. `tests/production-compose.test.ts` checks reproducibility, protected gateway routes, service dependencies and persistent identities. See the root [production instructions](../../README.md#production-deployment) for Nginx URLs and migration from a full installation without deleting data.

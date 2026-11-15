@@ -8,18 +8,18 @@ On macOS, OrbStack runs unmodified official Storage with native xattrs: [infra/s
 
 ## Consistent backups
 
-For small installations, the simplest procedure is a short maintenance window: stop `web api worker auth storage realtime supavisor functions studio meta rest api-gw` while leaving `db redis imgproxy` running (imgproxy only reads files). Users must not write during this window.
+These commands target the standalone production deployment. For small installations, use a short maintenance window: stop `web api worker auth storage rest api-gw` while leaving `db redis imgproxy` running (imgproxy only reads files). Users must not write during this window. If using the full development/admin variant, use its Compose file and also stop `realtime supavisor functions studio meta` before taking a backup.
 
 ```sh
 umask 077
 wardrobe_backup_dir="investigation/backups/operations-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$wardrobe_backup_dir"
-docker compose stop web api worker auth storage realtime supavisor functions studio meta rest api-gw
-docker compose exec -T db pg_dumpall -U supabase_admin > "$wardrobe_backup_dir/cluster.sql"
+docker compose -f docker-compose.prod.yml stop web api worker auth storage rest api-gw
+docker compose -f docker-compose.prod.yml exec -T db pg_dumpall -U supabase_admin > "$wardrobe_backup_dir/cluster.sql"
 # Host tar: BSD tar on macOS or GNU tar on Linux, with xattr support.
 tar --xattrs -C data -cf "$wardrobe_backup_dir/storage.tar" storage
-docker compose exec -T db tar -C /etc/postgresql-custom -cf - . > "$wardrobe_backup_dir/db-config.tar"
-docker compose up -d
+docker compose -f docker-compose.prod.yml exec -T db tar -C /etc/postgresql-custom -cf - . > "$wardrobe_backup_dir/db-config.tar"
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 `pg_dumpall` includes roles and sensitive Auth data; encrypt the file and restrict access to administrators. Back up `.env` separately to encrypted storage. Never add backups to Git. Copy them off-host and verify SHA-256 checksums. Verified PostgreSQL physical backups with WAL/PITR are also possible, but PITR configuration is outside the MVP.
@@ -41,17 +41,17 @@ Redis can be restored from AOF while stopped. If Redis is lost, worker recreates
 
 ## Updates and migrations
 
-Back up and rehearse updates on a copy. Record the current commit and image versions. Run `docker compose up -d --build`. Migrator starts after Auth/Storage readiness, takes an advisory lock, executes each new migration transactionally, and records SHA-256. Migration failure blocks BFF/worker startup. Existing migrations are immutable: append fixes in new files. PostgreSQL major upgrades need a separate upstream procedure, not a simple image-tag replacement.
+Back up and rehearse updates on a copy. Record the current commit and image versions. Run `docker compose -f docker-compose.prod.yml up -d --build`. Migrator starts after Auth/Storage readiness, takes an advisory lock, executes each new migration transactionally, and records SHA-256. Migration failure blocks BFF/worker startup. Existing migrations are immutable: append fixes in new files. PostgreSQL major upgrades need a separate upstream procedure, not a simple image-tag replacement.
 
-Do not run `docker compose down -v` on an existing installation. `docker compose down` without `-v` preserves data. Code rollback does not roll back schemas: use compatible migrations or restore a verified backup.
+Do not run `docker compose -f docker-compose.prod.yml down -v` on an existing installation. `docker compose -f docker-compose.prod.yml down` without `-v` preserves data. Code rollback does not roll back schemas: use compatible migrations or restore a verified backup.
 
 ## Monitoring
 
 ```sh
-docker compose ps
-docker compose logs --tail=100 api worker migrate
-docker compose logs --tail=100 auth storage db
-docker compose stats --no-stream
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs --tail=100 api worker migrate
+docker compose -f docker-compose.prod.yml logs --tail=100 auth storage db
+docker compose -f docker-compose.prod.yml stats --no-stream
 docker system df
 ```
 
@@ -64,6 +64,6 @@ Upstream service logs rotate at 3 × 10 MB. API/worker use Pino and do not log c
 - **Email not delivered:** inspect SMTP and permitted redirect URLs. Setting variables alone does not prove delivery.
 - **Image rejected:** at most 10 MB and 40 MP, JPEG/PNG/WebP; SVG/HEIC/GIF are unsupported in the MVP.
 - **Stuck job:** check worker, Redis, and `jobs`. Worker recovers the outbox every 5 seconds and stale processing after 5 minutes. Manual retry applies only to failed jobs and requires editing permission.
-- **Studio/Edge Runtime uses RAM:** do not remove arbitrary dependencies. The complete current baseline is intentional. Observe RAM, limits, and restart counts.
-- **Deno fails to start:** first launch needs JSR/npm access and working DNS. Deno cache persists in a named volume.
+- **Optional Supabase containers use RAM:** deploy with `docker-compose.prod.yml`. Follow the root README transition steps to stop optional containers left from the full stack; a production `up` alone does not stop old orphan containers. Keep all data volumes.
+- **Deno fails to start in the full variant:** Edge Runtime is omitted from production. The full development variant needs JSR/npm access and working DNS on first launch; its Deno cache persists in a named volume.
 - **Access broken after update:** refresh using the PWA update notification. Private APIs/photos must never be served from service worker cache.

@@ -1,6 +1,6 @@
 # Smart Wardrobe
 
-Self-hosted React SPA with English and Polish interfaces. One root docker-compose.yml owns the full stack.
+Self-hosted React SPA with English and Polish interfaces. Use one standalone root Compose file per deployment: `docker-compose.prod.yml` for production or `docker-compose.yml` for the full development/admin stack. Never layer these two files.
 
 - apps/web: Vite/React, TanStack Router/Query, Tailwind, shadcn-style Radix components.
 - apps/api: Fastify BFF. Only public API entry. Supabase requests use the user's access token, never service_role.
@@ -9,7 +9,7 @@ Self-hosted React SPA with English and Polish interfaces. One root docker-compos
 - supabase/migrations: ordered, immutable SQL migrations, transaction and checksum enforced.
 - infra/supabase: vendored official 0.8.4 configuration; provenance.json records source hashes.
 
-Use Node 26 LTS and pnpm 12. Commands: pnpm install, pnpm typecheck, pnpm lint, pnpm test, pnpm build, pnpm test:e2e, pnpm test:stack. Setup: node scripts/setup.mjs; docker compose up -d --build.
+Use Node 26 LTS and pnpm 12. Commands: pnpm install, pnpm typecheck, pnpm lint, pnpm test, pnpm build, pnpm test:e2e, pnpm test:stack. Production setup: node scripts/setup.mjs; docker compose -f docker-compose.prod.yml up -d --build. The full development stack uses docker-compose.yml.
 
 After each code/configuration change, run the narrow relevant check; before finishing a milestone run `pnpm check` (format, typed ESLint baseline, monorepo typecheck, Vitest, dependency boundaries/cycles, Knip baseline, and build). Do not mass-fix lint/format findings unless the user explicitly requests repository-wide formatting; keep that work limited to stylistic fixes. Review baseline changes before updating `docs/quality/*-baseline.json` or `.dependency-cruiser-known-violations.json`. See [`docs/CODE_QUALITY.md`](docs/CODE_QUALITY.md).
 
@@ -54,3 +54,7 @@ All source code, identifiers, comments, technical messages, logs, tests, develop
 New features must provide both `en` and `pl` translations. Do not hardcode UI text in JSX. API errors should use stable codes with safe English technical messages and localized frontend display. Do not translate user data, saved generated content, or existing identifiers. Intentional multilingual normalization vocabularies and immutable applied migrations retain their original values.
 
 When introducing or significantly modifying a feature, update the relevant developer documentation, including the feature map, API references, migration instructions, and development examples when applicable.
+
+## Production Compose
+
+`node scripts/compose.mjs` generates both standalone variants and the production Envoy files; `--check` verifies reproducibility without writes. `scripts/compose-production.mjs` derives production from the full file, removing optional Supabase services and their routes/clusters while retaining upstream API-key/RBAC behavior. Keep existing named-volume identities and private Storage binds. Do not modify vendored upstream files or remove `imgproxy` without separately validating Storage. Never apply production changes to the existing account database during tests; use isolated containers and mock backends.

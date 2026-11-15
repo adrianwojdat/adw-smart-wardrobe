@@ -352,3 +352,9 @@ The BFF continues saving additive patches through `merge_my_style_answers` with 
 user token. `schema_version: 1` and q01–q30 answers remain compatible; four
 new fields are optional and require neither a migration nor completing the survey again.
 Details: [style survey 2.0](style-profile.md).
+
+## Standalone production deployment
+
+`docker-compose.prod.yml` is the production entry point; `docker-compose.yml` retains the complete development/admin stack. Each file owns one complete stack, and the files must not be merged. `scripts/compose.mjs` generates the full file and invokes `scripts/compose-production.mjs` to derive production plus `infra/production/envoy/{cds.yaml,lds.template.yaml}` from the pinned upstream configuration. The production gateway keeps Auth, REST/GraphQL and Storage routes with unchanged upstream security filters; removed services have neither clusters nor forwarding routes. Vendored provenance remains unchanged.
+
+Production includes ten long-running core services and a one-shot migrator. It omits Studio, postgres-meta, Supabase Realtime, Edge Runtime, Supavisor and the development mail relay. The application uses API polling, direct PostgreSQL pools and its existing BullMQ/Gemini worker. Storage retains imgproxy and the same private file mount. Production publishes only web ports and uses the existing Compose project name and volume identities. Switching requires stopping old optional services; no schema/data cleanup is part of the deployment variant. See the root README production instructions and `tests/production-compose.test.ts`.

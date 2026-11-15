@@ -4,13 +4,14 @@
 
 Smart Wardrobe helps organize personal and family clothing: upload images, prepare catalog photographs, identify categories and colors, manage laundry, save outfits, and create smart packing lists for trips. The application is self-hosted: accounts, data, and photos stay on your infrastructure. The core wardrobe and CPU image pipeline do not require Supabase Cloud or a paid AI API. Gemini-powered outfit and packing enrichment requires a user-configured Gemini credential.
 
-This React SPA works on desktop and mobile and runs with its entire backend through **one root Docker Compose configuration**. Default garment analysis and background removal run on the CPU. Ollama on a separate LAN computer is optional.
+This React SPA works on desktop and mobile and runs with its entire backend through a **standalone Docker Compose configuration**. Use `docker-compose.prod.yml` for production; `docker-compose.yml` retains the full development/admin stack. Default garment analysis and background removal run on the CPU. Ollama on a separate LAN computer is optional.
 
 ## Contents
 
 - [Development Guide](#development-guide)
 - [Application features](#application-features)
 - [Getting started](#getting-started)
+- [Production deployment](#production-deployment)
 - [Using the application](#using-the-application)
 - [Images and AI analysis](#images-and-ai-analysis)
 - [Architecture](#architecture)
@@ -64,34 +65,89 @@ On Linux, skip selecting the OrbStack context. Setup creates a local `.env` with
 Before the first build, prepare CPU weights, which are not stored in Git: [FashionSigLIP downloads and SHA-256](infra/models/fashion-siglip/README.md). The `u2netp.onnx` background removal model must also be present in `infra/models/`, following its [description and SHA-256](infra/models/README.md). The [Node services Dockerfile](infra/Dockerfile.node) copies local weights into the image; it does not download them.
 
 ```sh
-docker compose up -d --build
-docker compose ps
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps
 ```
 
 Do not launch a separate Supabase deployment. The `migrate` service is a one-shot operation: after success it is exited, rather than continuously running.
 
-### Existing Mac installation
+### Existing installation
 
-```sh
-cd ~/Desktop/Projekty/adw-smart-wardrobe
-docker context use orbstack
-docker compose up -d --build
-```
-
-**Changing the context does not migrate data.** The instructions above describe an already migrated environment. When moving another installation, first back up and transfer PostgreSQL/Redis volumes and Storage files with their xattrs. Do not run the same installation simultaneously in two engines.
+Keep the existing `.env`, data directory and Compose project name. Do not generate replacement secrets or create a second stack. Follow [switching an existing full installation](#switching-an-existing-full-installation) before starting the production variant.
 
 ### Local addresses
 
-| Service         | Address                                 | Access                                                                |
-| --------------- | --------------------------------------- | --------------------------------------------------------------------- |
-| Application     | http://localhost:8080                   | Smart Wardrobe account                                                |
-| OpenAPI         | http://localhost:8080/api/docs          | REST API documentation                                                |
-| JSON OpenAPI    | http://localhost:8080/api/docs/json     | API specification                                                     |
-| Supabase Studio | http://localhost:8000                   | Basic Auth: `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` from `.env` |
-| Bull Board      | http://localhost:8080/api/admin/queues/ | Application session and an account allowed by `QUEUE_ADMIN_USER_IDS`  |
-| PostgreSQL      | `127.0.0.1:54322`                       | User `postgres`, database `postgres`, password `POSTGRES_PASSWORD`    |
+| Service      | Address                                 | Access                                                               |
+| ------------ | --------------------------------------- | -------------------------------------------------------------------- |
+| Application  | http://localhost:8080                   | Smart Wardrobe account                                               |
+| OpenAPI      | http://localhost:8080/api/docs          | REST API documentation                                               |
+| JSON OpenAPI | http://localhost:8080/api/docs/json     | API specification                                                    |
+| Bull Board   | http://localhost:8080/api/admin/queues/ | Application session and an account allowed by `QUEUE_ADMIN_USER_IDS` |
 
-Studio and PostgreSQL are restricted to the host loopback interface. The Studio password is not an application-account password. Redis has no published port.
+The production variant publishes only the web service. PostgreSQL, Redis and the Supabase gateway have no host-published ports, and Studio is not included. The full development variant retains loopback-only Studio and PostgreSQL access.
+
+## Production deployment
+
+**Use this standalone file for production, including Proxmox LXC:**
+
+```sh
+docker compose -f docker-compose.prod.yml config --quiet
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps -a
+docker compose -f docker-compose.prod.yml logs --tail=100 migrate api worker
+```
+
+Run these commands from the repository root after generating `.env`, configuring URLs and preparing the model weights described above. The `migrate` container should exit with code 0. The other ten services remain running. Do not combine the two Compose files: `docker-compose.prod.yml` is a complete deployment, not an override.
+
+| Included in production                                                                                     | Omitted from production                                                  |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `web`, `api`, `worker`, `db`, `auth`, `rest`, `storage`, `api-gw`, `redis`, `imgproxy`, one-shot `migrate` | `studio`, `meta`, `realtime`, `functions`, `supavisor`, `dev-mail-relay` |
+
+Outfit generation, the style profile, Travel Packing, garment analysis, private images, authentication, RLS, queues, cancellation and Gemini limits remain available. Gemini jobs run in the application worker, not in Supabase Edge Functions. `imgproxy` remains because the current Storage configuration enables image transformation and depends on it. Removing containers does not remove existing database schemas or historical data.
+
+The production gateway contains only Auth, REST/GraphQL and Storage backends. Original API-key translation and RBAC filters are preserved; unused administrative/Realtime/Functions routes and clusters are removed. Only application web ports are published; database and gateway administration remain accessible through authorized `docker compose ... exec` operations, not public ports.
+
+### HTTPS behind an existing Nginx proxy
+
+Terminate HTTPS at Nginx and proxy the whole domain to `http://<lxc-ip>:8080`, preserving `Host` and the standard forwarded headers. Use the public HTTPS origin in `.env`, for example:
+
+```dotenv
+APP_ORIGIN=https://wardrobe.example.com
+APP_ADDITIONAL_ORIGINS=
+SITE_URL=https://wardrobe.example.com
+SUPABASE_PUBLIC_URL=https://wardrobe.example.com
+API_EXTERNAL_URL=https://wardrobe.example.com/api/auth
+ADDITIONAL_REDIRECT_URLS=https://wardrobe.example.com/reset-password
+COOKIE_SECURE=true
+SITE_ADDRESS=:80
+HTTP_PORT=8080
+```
+
+Keep Caddy on internal HTTP (`SITE_ADDRESS=:80`); your Nginx manages the certificate. Allow Nginx to reach the LXC application port over a trusted network. Set its upload request limit above the application's 10 MB image limit, for example `client_max_body_size 12m`. See [Proxmox deployment](docs/deployment-proxmox.md) for direct-HTTPS and email configuration.
+
+### Switching an existing full installation
+
+Back up first and use the **same repository directory, `.env`, bind mount and project name**. Both files default to `smart-wardrobe`, preserving existing named volumes. If the installation uses `-p` or `COMPOSE_PROJECT_NAME`, keep that exact value. Do not run two copies against the same database or image directory.
+
+Stop optional services using the old full definition, then start the production definition:
+
+```sh
+docker compose -f docker-compose.yml stop studio meta realtime functions supavisor dev-mail-relay
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps -a
+```
+
+The optional containers may remain stopped and appear in orphan warnings; they consume no running-container CPU/RAM. No volume deletion or database reset is needed. Review pending migrations before updating an existing installation. Verify login, existing garments/photos, saved outfits and packing lists after the switch. Do not use plain `docker compose up` afterward: it selects the full file and starts optional services again.
+
+### Production operations
+
+```sh
+docker compose -f docker-compose.prod.yml logs -f api worker
+docker compose -f docker-compose.prod.yml stop
+docker compose -f docker-compose.prod.yml up -d
+```
+
+For a new installation, keep an encrypted backup of `.env`, PostgreSQL, `db-config` and `data/storage/` with xattrs. See [backup and recovery](docs/operations.md). Never use `down -v` as an update or repair step. Actual memory savings depend on workload; the reduced configuration has not established a new minimum-RAM benchmark.
 
 ## Using the application
 
@@ -214,7 +270,7 @@ flowchart TB
 | Identity and data | Self-hosted Supabase: GoTrue, PostgreSQL, PostgREST, and private Storage                                                    |
 | Infrastructure    | One Compose stack; Caddy, Envoy, Studio, Realtime, imgproxy, postgres-meta, Edge Runtime, Supavisor, and persistent volumes |
 
-The Supabase baseline pins official self-hosted release **0.8.4**; sources and checksums are recorded in `infra/supabase/provenance.json`. This baseline uses Envoy. The `scripts/compose.mjs` generator recreates the root Compose configuration from versioned upstream configuration.
+The Supabase baseline pins official self-hosted release **0.8.4**; sources and checksums are recorded in `infra/supabase/provenance.json`. This baseline uses Envoy. The `scripts/compose.mjs` generator reproduces the full Compose configuration and derives the standalone production variant and its gateway files. Vendored upstream configuration remains unchanged.
 
 ### Security boundaries
 
@@ -239,7 +295,9 @@ infra/auth-email/       Polish Auth email templates
 docs/                   deployment, operations, decisions, and progress
 data/storage/          active image files, outside Git
 investigation/         private reports, experiments and backups, outside Git
-docker-compose.yml     the complete deployment
+docker-compose.prod.yml production deployment without optional Supabase services
+docker-compose.yml      full development/admin deployment
+infra/production/       generated production gateway configuration
 ```
 
 ## Configuration
@@ -265,7 +323,7 @@ Environment variable template: [`.env.example`](.env.example). Store secrets onl
 Add the exact `http://<host-ip>:8080` to `APP_ADDITIONAL_ORIGINS` in `.env`, then recreate the API:
 
 ```sh
-docker compose up -d --no-deps api
+docker compose -f docker-compose.prod.yml up -d --no-deps api
 ```
 
 On the phone, open the same IP address with port 8080. A computer IP change requires updating the origin. Do not use a wildcard. Full PWA installation and service worker support require a secure HTTPS context; ordinary HTTP on a LAN address does not provide the same capabilities as localhost.
@@ -277,15 +335,15 @@ An existing local SMTP server can be used through the `dev-mail` profile and Nod
 ## Administration and maintenance
 
 ```sh
-docker compose ps
-docker compose logs --tail=100 api worker storage
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs --tail=100 api worker storage
 curl --fail http://localhost:8080/api/health
 
 # Stop while preserving data:
-docker compose stop
+docker compose -f docker-compose.prod.yml stop
 
 # Start without intentionally rebuilding images:
-docker compose up -d
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 ### Queues
@@ -298,7 +356,7 @@ Redis history retains completed and failed jobs for **up to 7 days, at most 1000
 
 Active images live in **`./data/storage/`**, without periodic export or synchronization with a hidden volume. Supabase retains object directories and versions: a directory may be named `cutout.png` while the file inside has an extensionless UUID name. It is still an ordinary image and can be opened with Preview or Quick Look. Do not rename or delete it manually.
 
-**A complete backup requires PostgreSQL, images with xattrs, keys, and configuration.** A SHA256 checksum confirms image bytes, not attribute preservation. Never run `docker compose down -v`, reset Supabase, or manually delete PGDATA during diagnosis. Follow the [backup and recovery procedure](docs/operations.md).
+**A complete backup requires PostgreSQL, images with xattrs, keys, and configuration.** A SHA256 checksum confirms image bytes, not attribute preservation. Never run `docker compose -f docker-compose.prod.yml down -v`, reset Supabase, or manually delete PGDATA during diagnosis. Follow the [backup and recovery procedure](docs/operations.md).
 
 ### Common issues
 
@@ -342,7 +400,9 @@ After changing infrastructure configuration, run the generator from the reposito
 
 ```sh
 node scripts/compose.mjs
-docker compose config --quiet
+node scripts/compose.mjs --check
+docker compose -f docker-compose.yml config --quiet
+docker compose -f docker-compose.prod.yml config --quiet
 ```
 
 SQL migrations are ordered and checksum-verified. Do not edit applied migrations; add a new, tested migration. Updating an existing installation requires a backup and a review of pending migrations before `up --build`.

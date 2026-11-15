@@ -2,7 +2,7 @@
 
 ## Resources
 
-Suggested full-stack starting resources: **4 vCPUs, 8 GB RAM, and 40–60 GB SSD**, plus images/backups. Intel N100/N150 is adequate for a small family, although image builds can take longer. Do not assume full Supabase will be stable in 4 GB. The 8 GB recommendation is operational guidance, not an N100 load-test result; local verification results are in `docs/progress.md`. All baseline Supabase services are retained.
+Suggested full-stack starting resources: **4 vCPUs, 8 GB RAM, and 40–60 GB SSD**, plus images/backups. Intel N100/N150 is adequate for a small family, although image builds can take longer. Do not assume full Supabase will be stable in 4 GB. The 8 GB recommendation is operational guidance, not an N100 load-test result; local verification results are in `docs/progress.md`. The production variant omits unused Supabase administration, Realtime, Edge Functions and pooler services; the full development variant remains available. These resource figures are guidance for the full stack, not a benchmark of the reduced variant.
 
 Image capacity depends on count/content; uploads are resized and encoded as WebP, without a fixed-size guarantee. Monitor Storage and database disk space. Image builds need extra space for pnpm and Docker layers. Keep backups on a separate disk/host, not in the same LXC.
 
@@ -10,15 +10,17 @@ Image capacity depends on count/content; uploads are resized and encoded as WebP
 
 1. Create a dedicated, unprivileged Debian/Ubuntu LXC with security updates. Proxmox configuration is the administrator’s responsibility; the repository does not modify the host.
 2. Docker in LXC needs nesting and keyctl. Check storage-driver, cgroup, and AppArmor compatibility for your Proxmox version. Do not disable host-wide security. If containers do not work correctly in your setup, use a small VM instead of privileged LXC.
-3. Install Docker Engine and the Compose plugin using Docker documentation. `docker compose version` and `docker info` must work. A separate Supabase CLI is not required.
+3. Install Docker Engine and the Compose plugin using Docker documentation. `docker compose -f docker-compose.prod.yml version` and `docker info` must work. A separate Supabase CLI is not required.
 4. Clone the repository into a persistent directory. Secret generation requires Node 26 LTS; pnpm is only needed for development/tests because images install their own dependencies.
 
 ## First startup
 
+Use the standalone `docker-compose.prod.yml` for production. It is not an override: do not combine it with `docker-compose.yml`. Prepare the gitignored CPU weights before building, following the root README. The production gateway has no dependency on Studio and no routes/clusters for disabled services.
+
 ```sh
 node scripts/setup.mjs
 # Edit .env, then:
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 The script creates `.env` with mode 0600, cryptographically random secrets, and matching HS256 anon/service-role JWTs. It refuses to overwrite an existing file. Keep an encrypted copy of `.env`; losing session/vault keys may make some data unreadable. Do not change `POSTGRES_PASSWORD` after volume initialization without a role-rotation procedure.
@@ -60,16 +62,18 @@ Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_ADMIN_EMAIL`, `SMT
 ## Verification
 
 ```sh
-docker compose ps
-docker compose logs --tail=100 migrate api worker
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs --tail=100 migrate api worker
 curl -fsS http://localhost:8080/api/health
 ```
 
 `migrate` should exit with code 0; this is correct for a one-shot service. Other services should remain running. Open the application, register, create a wardrobe, add an image, save the garment, and inspect the catalog. Ollama is not required. Initial image and Deno dependency downloads need Internet access; built images/caches are local afterward.
 
-## Studio
+## Studio and optional services
 
-In the phase-1 setup, Studio and the gateway had no published ports. For temporary access, an administrator can create a server-side forward available **only on localhost**, then use SSH tunneling; do not expose the full Supabase API through public application routing. Alternatively use `docker compose exec -T db psql -U postgres -d postgres`. `DASHBOARD_PASSWORD` is random, but a password alone does not replace network isolation.
+Production omits `studio`, `meta`, `realtime`, `functions`, `supavisor` and `dev-mail-relay`. Studio is available only in the full development/admin variant. See [switching an existing installation](../README.md#switching-an-existing-full-installation) to preserve data and stop old optional containers. Do not alternate Compose variants on a running installation without reviewing the transition.
+
+Production publishes only the web service. For database administration use `docker compose -f docker-compose.prod.yml exec -T db psql -U postgres -d postgres`. Keep database, Redis and Supabase gateway access private; do not proxy Studio through the public application domain. The full variant retains its loopback-only administration ports.
 
 ## Ollama
 
