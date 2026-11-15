@@ -1,5 +1,6 @@
 // Reproducible adaptation of the pinned official Compose. Never fetches latest.
 import { readFileSync, writeFileSync } from 'node:fs';
+import { format, resolveConfig } from 'prettier';
 import { parse, stringify } from 'yaml';
 
 const c = parse(readFileSync('infra/supabase/upstream-compose.yml', 'utf8'));
@@ -217,8 +218,34 @@ for (const key of [
   'caddy-config',
 ])
   c.volumes[key] = {};
-writeFileSync(
-  'docker-compose.yml',
+
+// Keep credential encryption and queue controls consistent in both deployment variants.
+const geminiEnvironment = {
+  GEMINI_ENCRYPTION_KEY: '${GEMINI_ENCRYPTION_KEY:-}',
+  GEMINI_RPM_LIMIT: '${GEMINI_RPM_LIMIT:-12}',
+  GEMINI_SHARED_QUOTA_ID: '${GEMINI_SHARED_QUOTA_ID:-}',
+  GEMINI_TPM_LIMIT: '${GEMINI_TPM_LIMIT:-}',
+  GEMINI_RPD_LIMIT: '${GEMINI_RPD_LIMIT:-}',
+};
+
+Object.assign(c.services.api.environment, geminiEnvironment, {
+  GEMINI_MAX_QUEUE: '${GEMINI_MAX_QUEUE:-100}',
+});
+Object.assign(c.services.worker.environment, geminiEnvironment, {
+  GEMINI_TASK_TIMEOUT_MS: '${GEMINI_TASK_TIMEOUT_MS:-900000}',
+});
+
+const output = await format(
   '# Supabase 0.8.4 baseline: see infra/supabase/provenance.json\n' +
     stringify(c, { lineWidth: 120 }),
+  { ...(await resolveConfig('docker-compose.yml')), parser: 'yaml' },
 );
+
+if (process.argv.includes('--check')) {
+  if (readFileSync('docker-compose.yml', 'utf8') !== output)
+    throw new Error('Full Compose configuration is stale. Run node scripts/compose.mjs.');
+} else {
+  writeFileSync('docker-compose.yml', output);
+}
+
+await import('./compose-production.mjs');

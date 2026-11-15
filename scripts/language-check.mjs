@@ -101,7 +101,10 @@ for (const file of files) {
     let offset = 0;
 
     for (const line of text.split('\n')) {
-      if (file === 'docker-compose.yml' && /^\s+GOTRUE_MAILER_SUBJECTS_[A-Z_]+:/u.test(line)) {
+      if (
+        ['docker-compose.yml', 'docker-compose.prod.yml'].includes(file) &&
+        /^\s+GOTRUE_MAILER_SUBJECTS_[A-Z_]+:/u.test(line)
+      ) {
         offset += line.length + 1;
         continue; // Generated Polish mail subjects, paired with versioned pl-PL templates.
       }
