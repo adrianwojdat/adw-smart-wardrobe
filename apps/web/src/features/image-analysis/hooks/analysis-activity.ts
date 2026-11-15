@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
-import { request } from './api';
+
+import { request } from '../../../lib/api/client';
+
 const schema = z.array(
   z.object({
     wardrobe_id: z.uuid(),
@@ -9,6 +11,7 @@ const schema = z.array(
     processing: z.number().int().nonnegative(),
   }),
 );
+
 export function useAnalysisActivity() {
   return useQuery({
     queryKey: ['analysis-activity'],

@@ -1,0 +1,33 @@
+{
+  "page": {
+    "eyebrow": "YOUR COLLECTION",
+    "title": "Add multiple garments",
+    "description": "One photo creates one garment. Names and analysis are prepared automatically.",
+    "createWardrobe": "Create wardrobe",
+    "wardrobe": "Wardrobe",
+    "limits": "Up to 200 photos, JPEG / PNG / WebP, up to 10 MB each.",
+    "drop": "Drop photos here or choose files",
+    "concurrency": "Up to 3 photos upload at a time. AI analysis runs separately in the queue.",
+    "inputLabel": "Photos of multiple garments",
+    "keepOpen": "You can continue using the app while uploading. Keep this tab open; the upload list is held in memory.",
+    "maxLimit": "A batch can contain up to 200 photos. Choose fewer files or clear the completed batch.",
+    "progress": "Import progress",
+    "progressLabel": "Upload progress",
+    "progressSummary": "Total: {{total}} · Uploaded: {{uploaded}} · Processing: {{processing}} · Ready: {{completed}} · Errors: {{failed}}",
+    "readyMeaning": "“Ready” means the catalog image has been prepared. AI suggestions may arrive later, including after Ollama is switched back on.",
+    "statusUnavailable": "Could not refresh processing statuses. We will retry automatically.",
+    "openGarment": "Open garment",
+    "retry": "Retry upload",
+    "clear": "Clear import list",
+    "clearDescription": "Clearing the list does not delete saved garments or photos.",
+    "stateWaiting": "Waiting to upload",
+    "stateUploading": "Uploading…",
+    "stateUploaded": "Uploaded · waiting for processing",
+    "stateFailed": "Upload failed",
+    "backgroundProgress": "Uploading garments: {{uploaded}} / {{total}}. View progress",
+    "invalidType": "Choose a JPEG, PNG or WebP file.",
+    "fileTooLarge": "The image exceeds the 10 MB limit.",
+    "fileEmpty": "The file is empty.",
+    "uploadFailed": "The photo could not be uploaded."
+  }
+}

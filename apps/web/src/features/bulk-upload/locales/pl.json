@@ -1,0 +1,33 @@
+{
+  "page": {
+    "eyebrow": "TWOJA KOLEKCJA",
+    "title": "Dodaj wiele ubrań",
+    "description": "Jedno zdjęcie — jedno ubranie. Nazwy i analiza zostaną przygotowane automatycznie.",
+    "createWardrobe": "Utwórz garderobę",
+    "wardrobe": "Garderoba",
+    "limits": "Do 200 zdjęć, JPEG / PNG / WebP, maksymalnie 10 MB każde.",
+    "drop": "Przeciągnij zdjęcia lub wybierz pliki",
+    "concurrency": "Przesyłamy maksymalnie 3 zdjęcia jednocześnie. Analiza AI działa osobno w kolejce.",
+    "inputLabel": "Zdjęcia wielu ubrań",
+    "keepOpen": "Podczas przesyłania możesz korzystać z aplikacji. Pozostaw tę kartę otwartą — lista jest przechowywana w pamięci.",
+    "maxLimit": "Maksymalnie 200 zdjęć w jednej partii. Wybierz mniej plików lub wyczyść zakończoną partię.",
+    "progress": "Postęp importu",
+    "progressLabel": "Postęp przesyłania",
+    "progressSummary": "Łącznie: {{total}} · Przesłano: {{uploaded}} · W przetwarzaniu: {{processing}} · Gotowe: {{completed}} · Błędy: {{failed}}",
+    "readyMeaning": "„Gotowe” oznacza przygotowanie zdjęcia katalogowego. Sugestie AI mogą pojawić się później, także po ponownym włączeniu komputera z Ollamą.",
+    "statusUnavailable": "Nie można odświeżyć statusów przetwarzania. Spróbujemy ponownie automatycznie.",
+    "openGarment": "Otwórz ubranie",
+    "retry": "Ponów przesyłanie",
+    "clear": "Wyczyść listę importu",
+    "clearDescription": "Wyczyszczenie listy nie usuwa zapisanych ubrań ani zdjęć.",
+    "stateWaiting": "Oczekuje na przesłanie",
+    "stateUploading": "Przesyłanie…",
+    "stateUploaded": "Przesłano · oczekuje na przetwarzanie",
+    "stateFailed": "Błąd przesyłania",
+    "backgroundProgress": "Przesyłanie ubrań: {{uploaded}} / {{total}}. Zobacz postęp",
+    "invalidType": "Wybierz plik JPEG, PNG lub WebP.",
+    "fileTooLarge": "Zdjęcie przekracza limit 10 MB.",
+    "fileEmpty": "Plik jest pusty.",
+    "uploadFailed": "Nie udało się przesłać zdjęcia."
+  }
+}

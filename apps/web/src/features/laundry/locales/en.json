@@ -1,0 +1,18 @@
+{
+  "page": {
+    "eyebrow": "CARE FOR WHAT YOU LOVE",
+    "title": "Laundry and care",
+    "description": "Small rituals help your clothes stay with you for longer.",
+    "all": "All",
+    "garment": "Garment",
+    "status": "Status",
+    "changeStatus": "Change status",
+    "yourWardrobe": "Your wardrobe",
+    "statusUpdated": "Garment status updated.",
+    "emptyTitle": "Everything is under control",
+    "emptyDescription": "There are no garments in this category. You can change their status at any time.",
+    "careTip": "Always check care instructions on the manufacturer's label. You can find label photos in garment details.",
+    "statusFor": "Status: {{name}}",
+    "unknownError": "Could not update garment status."
+  }
+}

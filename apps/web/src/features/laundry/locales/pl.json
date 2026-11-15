@@ -1,0 +1,18 @@
+{
+  "page": {
+    "eyebrow": "DBAJ O TO, CO LUBISZ",
+    "title": "Pranie i pielęgnacja",
+    "description": "Małe rytuały, dzięki którym Twoje ubrania zostaną z Tobą na dłużej.",
+    "all": "Wszystkie",
+    "garment": "Ubranie",
+    "status": "Status",
+    "changeStatus": "Zmień status",
+    "yourWardrobe": "Twoja garderoba",
+    "statusUpdated": "Status ubrania zaktualizowany.",
+    "emptyTitle": "Wszystko pod kontrolą",
+    "emptyDescription": "Nie ma ubrań w tej kategorii. Ich status możesz zmienić w każdej chwili.",
+    "careTip": "Wskazówki pielęgnacji zawsze sprawdzaj na metce producenta. Zdjęcie metki znajdziesz w szczegółach ubrania.",
+    "statusFor": "Status: {{name}}",
+    "unknownError": "Nie udało się zaktualizować statusu ubrania."
+  }
+}
