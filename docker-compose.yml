@@ -277,7 +277,7 @@ services:
       S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
       S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
     volumes:
-      - ./data/storage:/var/lib/storage
+      - ${STORAGE_PATH:-./data/storage}:/var/lib/storage
     logging:
       driver: json-file
       options:
@@ -287,7 +287,7 @@ services:
     image: darthsim/imgproxy:v4.0.21
     restart: unless-stopped
     volumes:
-      - ./data/storage:/var/lib/storage:ro
+      - ${STORAGE_PATH:-./data/storage}:/var/lib/storage:ro
     healthcheck:
       test:
         - CMD

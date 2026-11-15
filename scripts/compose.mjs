@@ -25,8 +25,8 @@ c.services.db.volumes = c.services.db.volumes.map((v) =>
   v.includes('/db/data:') ? 'postgres-data:/var/lib/postgresql/data' : v,
 );
 // Native file backend: macOS requires an engine with working Linux xattrs (OrbStack).
-c.services.storage.volumes = ['./data/storage:/var/lib/storage'];
-c.services.imgproxy.volumes = ['./data/storage:/var/lib/storage:ro'];
+c.services.storage.volumes = ['${STORAGE_PATH:-./data/storage}:/var/lib/storage'];
+c.services.imgproxy.volumes = ['${STORAGE_PATH:-./data/storage}:/var/lib/storage:ro'];
 c.services.studio.volumes = [
   'studio-snippets:/app/snippets',
   './infra/supabase/volumes/functions:/app/edge-functions:ro',

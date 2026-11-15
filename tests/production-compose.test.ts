@@ -129,6 +129,17 @@ describe('standalone production deployment', () => {
     );
   });
 
+  it('uses one configurable image directory in both variants and keeps imgproxy read-only', () => {
+    for (const variant of [full, production]) {
+      expect(variant.services.storage?.volumes).toEqual([
+        '${STORAGE_PATH:-./data/storage}:/var/lib/storage',
+      ]);
+      expect(variant.services.imgproxy?.volumes).toEqual([
+        '${STORAGE_PATH:-./data/storage}:/var/lib/storage:ro',
+      ]);
+    }
+  });
+
   it('has no dangling service, network or named-volume dependencies', () => {
     for (const service of Object.values(production.services)) {
       for (const name of Object.keys(record(service.depends_on ?? {})))
@@ -146,7 +157,7 @@ describe('standalone production deployment', () => {
 
         const source = mount.split(':')[0]!;
 
-        if (!source.startsWith('.') && !source.startsWith('/'))
+        if (!source.startsWith('.') && !source.startsWith('/') && !source.startsWith('${'))
           expect(production.volumes).toHaveProperty(source);
       }
     }
