@@ -107,6 +107,36 @@ Outfit generation, the style profile, Travel Packing, garment analysis, private 
 
 The production gateway contains only Auth, REST/GraphQL and Storage backends. Original API-key translation and RBAC filters are preserved; unused administrative/Realtime/Functions routes and clusters are removed. Only application web ports are published; database and gateway administration remain accessible through authorized `docker compose ... exec` operations, not public ports.
 
+### Custom image directory (including Proxmox/NAS)
+
+Set `STORAGE_PATH` in the server's `.env` to a directory visible to the Docker host. When Docker runs inside LXC, that means a path inside LXC, not only on the Proxmox host:
+
+```dotenv
+STORAGE_PATH=/mnt/NAS/adw-wardrobe
+```
+
+Both Storage and imgproxy use this directory; imgproxy remains read-only. Missing or empty `STORAGE_PATH` defaults to `./data/storage`. This changes image storage only, not PostgreSQL. The filesystem must support the native `user.supabase.*` xattrs; verify a real write/read before switching, particularly for NAS mounts.
+
+For a fresh installation, ensure the directory and its intended filesystem are mounted and writable before starting Compose. For an existing installation, back up first, stop the stack, copy the **entire** old image tree while preserving ownership, permissions and xattrs, and then change the path. Do not point an existing database at an empty directory or delete the old files before verification. On Linux, a stopped-stack copy can use `rsync -aHAX --numeric-ids OLD_DIRECTORY/ NEW_DIRECTORY/`; review both paths before execution.
+
+If you followed the earlier server-local override instructions, remove the `COMPOSE_FILE` entry from `.env` (or set it to `docker-compose.prod.yml`) and stop selecting `/etc/adw-smart-wardrobe/storage.yml`. An old override can otherwise take precedence over `STORAGE_PATH`. The override file can remain on disk unused.
+
+After copying any existing images and editing `.env`, apply and verify from the repository root:
+
+```sh
+docker compose -f docker-compose.prod.yml config --quiet
+docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml ps -a
+```
+
+A rebuild is not needed for a mount-path change. Inspect the running Storage mount and confirm it resolves to your configured directory:
+
+```sh
+docker inspect "$(docker compose -f docker-compose.prod.yml ps -q storage)" --format '{{range .Mounts}}{{if eq .Destination "/var/lib/storage"}}{{.Source}}{{end}}{{end}}'
+```
+
+Back up the configured directory, not just the default `data/storage/`. See [native Storage](infra/storage/README.md) and [operations](docs/operations.md).
+
 ### HTTPS behind an existing Nginx proxy
 
 Terminate HTTPS at Nginx and proxy the whole domain to `http://<lxc-ip>:8080`, preserving `Host` and the standard forwarded headers. Use the public HTTPS origin in `.env`, for example:

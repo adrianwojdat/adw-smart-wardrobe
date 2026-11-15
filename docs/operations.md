@@ -8,6 +8,8 @@ On macOS, OrbStack runs unmodified official Storage with native xattrs: [infra/s
 
 ## Consistent backups
 
+The example below assumes the default `STORAGE_PATH=./data/storage`. If `.env` selects a custom image directory, archive that actual directory with xattrs instead; backing up the default path would omit your current images. Check the running Storage mount before choosing backup paths. The bind mount must be visible inside LXC when Docker runs there.
+
 These commands target the standalone production deployment. For small installations, use a short maintenance window: stop `web api worker auth storage rest api-gw` while leaving `db redis imgproxy` running (imgproxy only reads files). Users must not write during this window. If using the full development/admin variant, use its Compose file and also stop `realtime supavisor functions studio meta` before taking a backup.
 
 ```sh

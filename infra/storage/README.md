@@ -1,7 +1,7 @@
 # Native Supabase file storage
 
 Storage uses the unmodified, version-pinned official Supabase image from the
-vendored Compose baseline. `data/storage/` is bind-mounted at `/var/lib/storage`;
+vendored Compose baseline. The directory selected by `STORAGE_PATH` (default `./data/storage`) is bind-mounted at `/var/lib/storage`;
 imgproxy reads the same directory read-only. Files remain ordinary images in
 Supabase's versioned path layout, sometimes with UUID filenames without an
 extension. Access control remains in Supabase; inspect files locally, but make

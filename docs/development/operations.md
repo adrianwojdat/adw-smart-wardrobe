@@ -68,6 +68,8 @@ The bare Compose commands in this table select the full development stack. For p
 
 ## Configuration and environment variables
 
+`STORAGE_PATH` selects the image bind source for both Storage and read-only imgproxy in both Compose variants. It defaults to `./data/storage` when missing or empty. Set it in the server `.env`; a custom location must support xattrs and must be accessible inside the Docker host/LXC. Existing files must be copied with their metadata while writers are stopped before changing this path.
+
 Use [`.env.example`](../../.env.example) as the configuration inventory, not as production credentials. `scripts/setup.mjs` generates random secrets; `scripts/compose.mjs` maps root variables to process variables. Never put server secrets into `VITE_*`, browser storage or public artifacts. The table groups related settings; review upstream Supabase settings in the template before changing them.
 
 | Variable(s)                                                                                             | Purpose / consumer                                     | Required and configuration location                           |
