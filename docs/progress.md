@@ -1,6 +1,30 @@
 # Progress — Phase 1
 
+## 2026-11-12 — English and Polish UI
+
+- Added `i18next` and `react-i18next`; `en` is the explicit default/fallback, `pl` is selectable in Settings, and `smart-wardrobe-language` persists the choice without a page reload or form reset. The active language updates `html lang` and document description.
+- Added 3 shared resource pairs (`common`, `navigation`, `validation`) and 11 feature-local pairs (auth, bulk upload, catalog, dashboard, family, garments, image analysis, laundry, outfits, settings, style profile): 878 semantic keys / 1,756 translated values. No API enums or database fields were translated.
+- Localized user-facing static copy, status labels, prompts, validation feedback, and accessibility labels across the SPA. Dates, currency, and search normalization follow the active locale. API errors are mapped to local messages by status.
+- Added i18n unit tests and a language E2E spec. `scripts/i18n-check.mjs` checks all 14 pairs for missing/extra keys, empty strings, and interpolation parity; `pnpm check:i18n` is in `pnpm check`.
+- Verification: `pnpm check` passed (format baseline: 10 pre-existing / 0 new; ESLint: 626 baseline diagnostics / 0 new; typecheck all 4 workspaces; 156/156 tests; dependency cruiser; source layout; Knip: 32 baseline / 0 new; all builds). Web build reports pre-existing daisyUI CSS and large-chunk warnings. The expanded translation check passed all 14 pairs.
+- Playwright desktop: fresh-visit English default passed (1); Settings switching/persistence skipped (1) because `E2E_LANGUAGE_EMAIL`/`E2E_LANGUAGE_PASSWORD` are not configured for an isolated development account. The selector and immediate language/persistence behavior are covered by unit tests. The first browser launch was sandbox-blocked; the approved local rerun passed.
+- Limitation: Gemini-generated prose, text transcribed from labels, and arbitrary user-entered values remain source content. Prompts/API contracts were not changed, so their language is not guaranteed by this static UI translation task.
+
+## 2026-11-12 — formatting and garment form
+
+Added import grouping via `eslint-plugin-simple-import-sort` and the native ESLint logical-spacing rule without a competing stylistic plugin. Prettier still controls formatting. A global trial found 603 existing violations, so rules were enabled for the reviewed extracted garment form and planned for gradual module rollout; the baseline was unchanged. Import, spacing, JSX, and feature-first guidelines were added to AGENTS.md and CODE_QUALITY.md.
+
+Split the garment form into page/composition, basic fields, classification, status, photos, persistence hook, and file validator. Preserved save/upload order, ID persistence before image upload for duplicate-safe retries, removal of successfully uploaded files only, cache invalidation, and navigation. Removed garment-detail exports from the form module. Added image type/size/count validation tests. Labels/layout were unchanged.
+
+Full `pnpm check` passed: Prettier baseline (10 existing/0 new), ESLint baseline (627/0 new/47 resolved), all-package typechecks, 154 tests, dependency-cruiser (183 modules/588 dependencies, no new violations), source layout, Knip (32 existing/0 new), and all workspace builds. Web retained the 804 kB bundle warning. Only web was built/recreated, returning HTTP 200; other containers remained healthy. E2E was not run because scenarios write data and a separate isolated environment was not confirmed.
+
 Updated: 2026-11-08. Phase 1 working MVP implemented and verified locally.
+
+## 2026-11-12 — daisyUI: theme and basic controls
+
+Added daisyUI 5.7.50 compatible with Tailwind CSS and `@tailwindcss/vite` 4.3.5, plus a light `smartwardrobe` theme using the existing cream/forest-green palette. Shared `Button` uses daisyUI classes with small Tailwind additions preserving sizes/variants. Inputs, selects, textareas, checkboxes, and radios gained daisyUI classes; base fields moved to the Tailwind layer, and the application border token was renamed to avoid collision. Form/outfit cards, status badges, and errors use standard classes. Autocomplete, menus, dialogs, and navigation retain existing logic.
+
+Added `docs/ui-guidelines.md` and its AGENTS.md link. Playwright saves 14 desktop/mobile screenshots in ignored `investigation/tmp/ui-daisyui/` and checks horizontal overflow. Menus, garment details, Gemini settings, and outfit generation were visually reviewed. No clean pre-change screenshots were available, so no pixel comparison is claimed. Repository ESLint, targeted Prettier, four-package typecheck, 144/144 Vitest, web build, and 6/6 desktop/mobile Playwright passed. Existing main bundle warning: approximately 792 kB.
 
 ## Implemented
 
@@ -80,7 +104,7 @@ Rebuilt and recreated only Auth, preserving its pinned GoTrue version. A loopbac
 
 ## Bulk upload — implemented, awaiting deployment approval
 
-Added `/garments/import` via “Dodaj wiele ubrań” on catalog/dashboard. Up to 200 JPEG/PNG/WebP photos (10 MB each), file picker and drag/drop; one unnamed garment per image uses the existing temporary-name trigger. Three bounded uploads with 750 ms start spacing keep load below the existing API limit. Background processing and AI reuse existing database outbox/BullMQ paths; existing worker concurrency remains one for GPU requests. Batch state survives SPA navigation, but not page reload/closing; UI explains this. Uploaded records/jobs remain durable.
+Added `/garments/import` through “Add multiple garments” on catalog/dashboard. Up to 200 JPEG/PNG/WebP photos (10 MB each), file picker and drag/drop; one unnamed garment per image uses the existing temporary-name trigger. Three bounded uploads with 750 ms start spacing keep load below the existing API limit. Background processing and AI reuse existing database outbox/BullMQ paths; existing worker concurrency remains one for GPU requests. Batch state survives SPA navigation, but not page reload/closing; UI explains this. Uploaded records/jobs remain durable.
 
 Each file retains garment/image UUIDs across retries. The authenticated creation endpoint reuses an existing same-owner garment on conflict without editing it. Image retries reuse the existing image or deterministic private Storage path with upsert disabled, including recovery after Storage succeeded but image insertion failed. No schema migration required; read-only verification confirms 0006 is already installed. Progress shows uploads, processing, completed and failures; per-file upload retries are available. Processing failures can be retried through the existing garment detail mechanism. Invalid files remain individually identified, without canceling valid files.
 
@@ -92,7 +116,7 @@ Deployment scope: API + web, and worker to activate previously prepared automati
 
 User approved deployment. Rebuilt and recreated only api, web and worker with --no-deps --no-build; before/after container IDs confirm every other service remained untouched. All three report healthy, and startup logs have no error/fatal entries. API health and deployed OpenAPI confirm client-supplied garment IDs and upload_id retry parameters. Running worker contains automatic naming, serialized AI requests and u2netp-catalog-v2. Effective SMTP/confirmation and Ollama settings were verified unchanged; no migrations, volumes or original photos were modified.
 
-Playwright ran against the deployed frontend at localhost:8080 with intercepted API requests: 201-file rejection, four separate garments, one upload failure and safe retry, navigation preserving the batch and mobile width checks passed. These browser records were mock-only. Real authenticated bulk upload through private Storage and the live processing queues was not exercised; no test user data or expensive Ollama calls were created. Use “Dodaj wiele ubrań” in the catalog or /garments/import after refreshing the SPA/PWA.
+Playwright ran against the deployed frontend at localhost:8080 with intercepted API requests: 201-file rejection, four separate garments, one upload failure and safe retry, navigation preserving the batch and mobile width checks passed. These browser records were mock-only. Real authenticated bulk upload through private Storage and live processing queues was not exercised; no test user data or expensive Ollama calls were created. Use “Add multiple garments” in catalog or /garments/import after refreshing the SPA/PWA.
 
 ## Bulk upload permission failure — fix prepared
 
@@ -120,121 +144,422 @@ After explicit user approval, built and recreated API only with --no-deps --no-b
 
 Both queues now use removeOnComplete/removeOnFail {age:604800,count:1000}: retain up to seven days, at most 1000 per terminal state per queue. Count is a cap, not a minimum; sixty recent jobs remain. Existing queued jobs keep their original options, and deleted history cannot be recovered. Added dispatchJob reconciliation so retained completed/failed Redis IDs cannot block PostgreSQL-authorized manual retry or delayed requeue after AI unavailability. Terminal history is preserved unless the durable DB explicitly queues that same job again. No database/Redis mutations or deployment performed for this step.
 
-## 2026-11-09 — reset konta developerskiego i FashionSigLIP CPU
+## 2026-11-09 — development account reset and CPU FashionSigLIP
 
-Na wyraźne polecenie właściciela usunięto bez wykonywania backupu 92 ubrania, 92 rekordy zdjęć, 195 powiązanych rekordów zadań, 2 stylizacje i 383 obiekty prywatnego Storage. Usunięto 91 istniejących wpisów BullMQ wyłącznie po ID związanych z tymi ubraniami. Porównanie fingerprintów potwierdziło zachowanie konta Auth, profilu, sesji, garderób, członkostw, ustawień oraz danych pozostałych użytkowników. Nie zmieniono schematu ani wolumenów. Istniejące pliki investigation pozostawiono.
+At the owner’s explicit request, without a backup, deleted 92 garments, 92 image rows, 195 related job rows, 2 outfits, and 383 private Storage objects. Removed 91 BullMQ entries only by IDs linked to those garments. Fingerprints confirmed preservation of Auth account, profile, sessions, wardrobes, memberships, settings, and other users’ data. Schema/volumes were unchanged; existing investigation files were retained.
 
-Domyślny provider analizy zdjęć ubrań: lokalny FashionSigLIP (oficjalny encoder ONNX quantized, przypięty SHA/revision, CPU 2 wątki, współbieżność kolejki 1). Istniejący upload/outbox automatycznie uruchamia ten provider. Ollama pozostaje opcjonalna, używana do OCR metek; nie zmieniono jej modeli ani adresu. Klasyfikator proponuje kategorię, kolor, wzór i polską nazwę, bez zgadywania materiału, rozmiaru, grubości czy ciepła. Wyniki cosine nie są procentową pewnością. Ręczne nazwy pozostają chronione. Gdy brak ręcznego obrotu, porównywane są cztery obroty wyłącznie dla klasyfikacji; obraz nie jest automatycznie obracany. Obróbka ONNX tła zachowana.
+Default garment analysis provider: local FashionSigLIP (official quantized ONNX encoder, pinned SHA/revision, two CPU threads, queue concurrency 1). Existing upload/outbox automatically invokes it. Ollama remains optional for label OCR; its models/address are unchanged. The classifier proposes category, color, pattern, and a Polish name without guessing material, size, thickness, or warmth. Cosine scores are not confidence percentages. Manual names stay protected. Without manual rotation, four orientations are compared only for classification; images are not auto-rotated. ONNX background processing is preserved.
 
-UI pokazuje nazwę FashionSigLIP, czas, wzór i top 5 kategorii; metadane wymagają zatwierdzenia. Nieobecne sugestie nie dostają domyślnych wartości z formularza. Przycisk ponownej analizy jest warunkowany dostępnością istniejącego RPC (migracja 0008 nadal nie jest stosowana w tym zadaniu).
+UI shows FashionSigLIP, duration, pattern, and top-five categories; metadata needs approval. Missing suggestions do not receive form defaults. Analysis retry depends on the existing RPC being available; migration 0008 was still not applied in this task.
 
-Weryfikacja: 14 testów (klasyfikacja cosine/Polish, nazwy, maski, provider Ollama), lint zmienionych plików; rzeczywista inferencja ONNX w kontenerze CPU na zachowanej kopii marynarki: Granatowa marynarka, 6.076 s, RSS 446 MiB. Oryginał bez zmian. Nie jest to pomiar na N100/N150 ani ocena całej garderoby. Wagi 90 MiB gitignored, instrukcja pobrania w infra/models/fashion-siglip/README.md. investigation wykluczono z kontekstu builda.
+Verification: 14 cosine/Polish classification, name, mask, and Ollama-provider tests; changed-file lint; real CPU-container ONNX inference on a preserved blazer copy produced a navy blazer name in 6.076 s at 446 MiB RSS. Original unchanged. This is neither an N100/N150 benchmark nor a whole-wardrobe assessment. Gitignored weights are 90 MiB; download instructions: infra/models/fashion-siglip/README.md. investigation is excluded from build context.
 
-Wdrożono wyłącznie worker, API i web (`up --no-deps --no-build`), bez migracji. Efektywny provider: fashion-siglip. Worker i API odpowiadają HTTP 200, modele/adres Ollamy zachowane. Autoryzacja i nowe przesyłanie zdjęć wymagają końcowego testu użytkownika na jego istniejącym koncie; nie dodawano sztucznych ubrań po wyczyszczeniu garderoby.
+Deployed only worker, API, and web (`up --no-deps --no-build`), without migrations. Effective provider: fashion-siglip. Worker/API return HTTP 200; Ollama models/address preserved. Authorization and new-image uploads still require final user verification on the existing account; no artificial garments were added after clearing the wardrobe.
 
 ## 2026-11-09 — widoczny wynik pustych rekomendacji
 
-Przycisk „Zaproponuj zestawy” działał, lecz po odpowiedzi z pustą listą pozostawiał identyczny ekran startowy. Odczyt danych: 89 czystych, niearchiwalnych ubrań zapisanych jako tops, bez bottoms/dresses. Nie zmieniano kategorii ani danych użytkownika. Po pustej odpowiedzi widok wyjaśnia brak zestawu, wymagania kategorii oraz potrzebę zatwierdzenia sugestii FashionSigLIP i prowadzi do garderoby. Stan wyniku związany z garderobą, okazją i temperaturą.
+“Suggest outfits” worked but an empty response left the initial screen unchanged. Read-only inspection found 89 clean, non-archived garments categorized as tops, with no bottoms/dresses. User categories/data were not changed. Empty results now explain outfit/category requirements and the need to approve FashionSigLIP suggestions, linking to the wardrobe. Result state is tied to wardrobe, occasion, and temperature.
 
-Poprawkę komunikatu pustych rekomendacji wdrożono tylko w web. Typecheck, lint, build i test Playwright (jedno żądanie, pusty wynik, widoczny komunikat i link do garderoby) przeszły. Nowe żądanie: automatycznie stosować pierwszą klasyfikację, późniejsze tylko po akceptacji. Obecny worker ma uprawnienia UPDATE wyłącznie name/name_source; automatyczny zapis kategorii wymaga addytywnej zmiany uprawnień/RLS. Propozycja do przeglądu: docs/pending-initial-classification.sql, NIE zastosowano. Implementacja powinna objąć kontrolę rewizji, blokadę wiersza, brak wcześniejszej analizy oraz ochronę ręcznej edycji; propozycja polityki nie jest samodzielnym ukończonym rozwiązaniem. Kategorie istniejących 89 ubrań nie zostały zmienione.
+Deployed the empty-recommendation message only in web. Typecheck, lint, build, and Playwright (one request, empty result, message and wardrobe link) passed. New request: auto-apply first classification, but require approval for subsequent analyses. Worker currently has UPDATE only on name/name_source; automatic category persistence needs additive permission/RLS changes. Review proposal: docs/pending-initial-classification.sql, NOT applied. Implementation must check revision, lock the row, require no previous analysis, and protect manual edits; a policy proposal alone is not a complete solution. Existing 89 garment categories remained unchanged.
 
-## 2026-11-09 — pierwsza klasyfikacja i lokalne Studio
+## 2026-11-09 — initial classification and local Studio
 
-Zatwierdzono i zastosowano tylko addytywne migracje 0009/0010 (0008 nadal pominięta). Wąska funkcja workera zapisuje kategorię/podkategorię/kolory i tymczasową nazwę przy pierwszej analizie nietkniętego ubrania. Sprawdza membership, typ/status zadania, rewizję, brak wcześniejszej analizy i niezmienione updated_at, blokuje wiersz. Ręczne nazwy i niepuste metadane zachowane. Nie przyznano ogólnego UPDATE metadanych; tylko EXECUTE funkcji. Reanalizy i ręcznie zmienione ubrania pozostają sugestiami. Nie zastosowano wstecznie do 89 istniejących ubrań. Test SQL z pełnym rollbackiem: początkowy zapis, odmowa powtórnego zapisu, ochrona ręcznych zmian; rzeczywiste połączenie wardrobe_worker potwierdziło dostęp do funkcji i odrzucenie nieistniejącego zadania. Typecheck/lint/build przeszły; wdrożono worker i web.
+Approved/applied only additive migrations 0009/0010 (0008 still skipped). A narrow worker function saves category/subcategory/colors and temporary name on first analysis of an untouched garment. It checks membership, job type/status, revision, no prior analysis, and unchanged updated_at, with a row lock. Manual names/nonempty metadata are preserved. Only function EXECUTE was granted, not general metadata UPDATE. Reanalysis and edited garments remain suggestions. No backfill touched the existing 89 garments. Rolled-back SQL tests covered initial save, repeat-save denial, and manual-edit protection; a real wardrobe_worker connection confirmed function access and rejection of a nonexistent job. Typecheck/lint/build passed; worker/web deployed.
 
-Studio było już zdrowe w istniejącym Compose, bez portu hosta. Oficjalny Envoy gateway udostępniono na 127.0.0.1:8000, z istniejącym Basic Auth (DASHBOARD_USERNAME/PASSWORD), przez dedykowaną sieć studio-access; sieć default pozostaje internal. Studio restart unless-stopped i brak profilu zapewniają automatyczny start. Nie zmieniono SMTP, kluczy Auth, danych ani wersji usług.
+Studio was already healthy in Compose without a host port. Official Envoy gateway was exposed at 127.0.0.1:8000 with existing Basic Auth (DASHBOARD_USERNAME/PASSWORD) through a dedicated studio-access network; default remains internal. Studio’s unless-stopped restart policy and lack of a profile ensure automatic startup. SMTP, Auth keys, data, and service versions were unchanged.
 
-## 2026-11-09 — usuwanie garderób w ustawieniach (gotowe do zatwierdzenia wdrożenia)
+## 2026-11-09 — wardrobe deletion in settings (ready for deployment approval)
 
-Dodano listę garderób w Ustawieniach, przycisk Usuń tylko dla właściciela, dialog z Anuluj i jednoznacznym potwierdzeniem utraty wszystkich ubrań, zdjęć, stylizacji i historii (także w garderobie rodzinnej). Konto pozostaje. API używa sesji użytkownika i właścicielskiego RPC; brak service-role w BFF. Addytywna migracja 0011 tworzy prywatny trwały rejestr sprzątania, zapisany atomowo z usunięciem garderoby. Worker po 30 s usuwa tylko powiązane job IDs i pliki pod dokładnym prefiksem UUID usuniętej garderoby; retry i restart zachowują rejestr do pełnego sukcesu. Nie opróżnia globalnych kolejek. Zapis wariantów zdjęć osłonięto blokadą trwałego zadania, aby aktywne przetwarzanie nie odtwarzało plików po skasowaniu garderoby. Retry sprzątania nie zatrzymuje innych zadań.
+Added wardrobe listing in Settings, an owner-only Delete button, Cancel, and explicit confirmation that all garments/photos/outfits/history, including family members’ items, will be lost. Account remains. API uses user session and owner RPC, without service-role in BFF. Additive migration 0011 creates a durable private cleanup registry atomically with wardrobe deletion. After 30 seconds worker deletes only related job IDs and files under the exact deleted wardrobe UUID prefix, retaining cleanup state across retries/restarts until success. Global queues are not emptied. Variant persistence locks the durable job so active processing cannot recreate files after deletion. Cleanup retries do not block other jobs.
 
-Weryfikacja: typecheck API/worker/web, lint zmienionych plików, 5 testów cleanup/cancellation. Integracja SQL w transakcji z rollbackiem: zakaz usunięcia przez obcego użytkownika, kaskada ubrań i jobów, zachowanie konta oraz trwały wpis sprzątania. Nie usunięto żadnej rzeczywistej garderoby. Migracja 0011 NIE zastosowana; usługi NIE przebudowane ani wdrożone. Oczekuje na zgodę na migrację i wdrożenie API/worker/web. Potwierdzenie dialogu w rzeczywistej przeglądarce pozostaje do sprawdzenia po wdrożeniu.
+Verification: API/worker/web typechecks, changed-file lint, five cleanup/cancellation tests. Rolled-back SQL integration covered foreign-user deletion denial, garment/job cascade, account preservation, and durable cleanup record. No real wardrobe was deleted. Migration 0011 was NOT applied; services were NOT rebuilt/deployed. Migration and API/worker/web deployment approval remained pending; real-browser confirmation needed verification after deployment.
 
-Wdrożenie zatwierdzone i wykonane: migracja 0011 z zapisanym checksumem, build i odtworzenie wyłącznie API/worker/web. Bez usuwania rzeczywistych garderób. Test Playwright na wdrożonym interfejsie z atrapą API potwierdził: przycisk tylko dla właściciela, ostrzeżenie o ubraniach, Anuluj bez DELETE, potwierdzenie z jednym DELETE i odświeżenie listy. Rzeczywisty worker potwierdził SELECT FOR UPDATE tabeli sprzątania i health HTTP 200; API healthy. Ostrzeżenie Fastify o wycofywanej opcji logowania nie blokuje działania.
+Deployment approved/completed: migration 0011 recorded its checksum; only API/worker/web rebuilt/recreated. No real wardrobes deleted. Deployed-UI Playwright with API mocks confirmed owner-only button, garment warning, Cancel without DELETE, one DELETE after confirmation, and refreshed listing. Real worker confirmed SELECT FOR UPDATE on cleanup registry and health HTTP 200; API healthy. Existing Fastify logging-option deprecation is nonblocking.
 
-## 2026-11-09 — różnorodność stylizacji
+## 2026-11-09 — outfit diversity
 
-Generator losuje kolejność możliwych połączeń, następnie wybiera do sześciu zestawów z priorytetem najmniej używanych ubrań. Przy co najmniej sześciu pasujących górach i dołach zestawy mają różne góry i różne doły; przy brakach powtórzenia są równoważone bez duplikowania kompletnej bazy. Buty i okrycia również losowane i dobierane rotacyjnie. Zachowano filtry czystości, archiwizacji, okazji i temperatury; brak nowych wywołań AI i zmian danych. Testy: 10 testów domeny, w tym 6 unikalnych gór/dołów, różne wyniki dla różnych ziaren losowania, równomierne wykorzystanie dwóch gór oraz pojedynczy dostępny komplet. Typecheck API i lint przeszły. Zmieniona logika jest wykonywana przez BFF, więc do wdrożenia wystarczy API.
+Generator randomizes possible combinations, then chooses up to six outfits prioritizing least-used garments. With at least six matching tops/bottoms, both are distinct across outfits; shortages balance reuse without duplicate full bases. Footwear/outerwear are randomized and rotated too. Cleanliness, archive, occasion, and temperature filters remain; no new AI calls/data changes. Ten domain tests cover six unique tops/bottoms, different seeds, balanced use of two tops, and a single available combination. API typecheck/lint passed. Logic runs in BFF, so only API deployment is needed.
 
-Wdrożono wyłącznie API (`--no-deps --no-build`), bez migracji i zmian danych. Test na działającym obrazie: 6 zestawów, 6 różnych gór i 6 różnych dołów na syntetycznych danych wyłącznie w pamięci; API health 200.
+Deployed only API (`--no-deps --no-build`), without migrations/data changes. Running-image test on synthetic in-memory data returned six outfits with six distinct tops and bottoms; API health 200.
 
-## 2026-11-09 — zbiorcza ponowna analiza garderoby (oczekuje na wdrożenie)
+## 2026-11-09 — bulk wardrobe reanalysis (awaiting deployment)
 
-W Ustawieniach przy każdej własnej garderobie dodano „Ponów analizę AI wszystkich ubrań”, stan zlecania i liczniki nowych/oczekujących/bez zdjęcia. BFF używa sesji użytkownika i RPC public.reanalyze_wardrobe, bez administracyjnych danych dostępu. Addytywna migracja 0012 sprawdza właściciela, blokuje garderobę i wybrane zdjęcia, wybiera jedno najstarsze zdjęcie garment na ubranie, zachowuje oryginał, obrót i rewizję. Zleca wyłącznie analyze_garment w istniejącym outboxie, pomija queued/processing tej samej rewizji. Nie powtarza ONNX tła ani OCR metek. Worker już przekazuje zapisaną rotację do FashionSigLIP i wykonuje kolejkę z concurrency 1; nie wymaga zmian. Ponowna analiza istniejących ubrań pozostaje sugestiami do akceptacji.
+Added “Retry AI analysis for all garments” in owned wardrobe settings, submission state, and new/pending/no-image counts. BFF uses the user session and public.reanalyze_wardrobe RPC, not admin credentials. Additive migration 0012 checks ownership, locks wardrobe/selected images, chooses one oldest garment image per garment, and preserves original/rotation/revision. It submits only analyze_garment to existing outbox, skipping queued/processing jobs for the same revision. ONNX background removal and label OCR do not repeat. Worker already passes saved rotation to FashionSigLIP with concurrency 1 and needs no changes. Existing garment reanalysis remains suggestions for approval.
 
-Test SQL na syntetycznej garderobie w pełni wycofanej transakcji: brak dostępu obcego użytkownika, jedno zdjęcie mimo wielu fotografii, drugie wywołanie bez duplikatów, licznik ubrań bez fotografii, zachowanie kąta 90°, ręcznej nazwy i kategorii. Typecheck API/web i lint przeszły. Migracja 0012 NIE zastosowana, niczego nie zakolejkowano w rzeczywistej garderobie. Do zatwierdzenia: zastosowanie 0012 i build/deploy wyłącznie API/web. Test interakcji przycisku w przeglądarce pozostaje do wykonania po wdrożeniu.
+Fully rolled-back synthetic-wardrobe SQL test covered foreign-user denial, one image despite multiple photos, no duplicates on a second call, no-image count, and preservation of 90° rotation, manual name/category. API/web typechecks and lint passed. Migration 0012 NOT applied; no real wardrobe jobs queued. Pending approval: apply 0012 and build/deploy only API/web. Browser button interactions remained to verify after deployment.
 
-Wdrożenie 0012 zatwierdzone i wykonane: zastosowano migrację z checksumem i odtworzono wyłącznie API/web (`--no-deps --no-build`); worker i Supabase bez restartu. Test Playwright na wdrożonym interfejsie z atrapą API przeszedł: właściwy POST dla garderoby, przycisk zablokowany podczas żądania, liczniki zakolejkowanych/oczekujących/brakujących zdjęć. API health 200. Nie zlecono żadnej rzeczywistej analizy; użytkownik uruchamia ją sam przyciskiem w ustawieniach.
+0012 deployment approved/completed: applied checksum-recorded migration and recreated only API/web (`--no-deps --no-build`); worker/Supabase not restarted. Deployed-UI Playwright with API mocks passed: correct wardrobe POST, button disabled during submission, queued/pending/missing-image counts. API health 200. No real analysis was submitted; the user starts it using the settings button.
 
-## 2026-11-09 — trwała aktywność analiz w UI
+## 2026-11-09 — durable analysis activity in UI
 
-Dodano autoryzowany GET /api/analysis/activity, odczytujący przez Supabase z tokenem użytkownika/RLS wszystkie aktywne queued/processing analizy (keyset pagination zamiast limitu historii 20 rekordów), agregowane według zdjęcia i garderoby. Frontend odpytuje stan co 3 s. W ustawieniach spinner i przycisk z liczbą pozostałych zadań pozostają zablokowane do zniknięcia aktywnych analiz, także po odświeżeniu. Błąd odczytu stanu blokuje ponowne zlecenie i pokazuje błąd. Po zleceniu wykonywany jest refetch przed zdjęciem blokady żądania. W szczegółach zdjęcia aktywna analiza ma spinner/status, przycisk ponowienia blokowany jest także przez stan trwały; zadania i obróbka zdjęć również mają spinner w kolejce/przetwarzaniu. Historia zadań odświeżana stale, aby wykryć zadania zlecone poza stroną ubrania. Bez zmian danych, modeli, migracji i workera. Typecheck API/web i lint przeszły.
+Added authenticated GET /api/analysis/activity using the user token/RLS to read all queued/processing analyses with keyset pagination instead of a 20-row history limit, aggregated by image/wardrobe. Frontend polls every three seconds. Settings spinner/remaining-count button stay disabled until activity ends, including after refresh. Read errors keep resubmission disabled and display an error. After submission, refetch occurs before releasing the request lock. Image details show a spinner/status; retry is disabled by durable activity too. Queued/processing image jobs also show spinners. Job history polls continuously to find work submitted elsewhere. No data/model/migration/worker changes. API/web typecheck and lint passed.
 
-Wdrożono wyłącznie API/web, bez migracji i restartu workera. Test Playwright na wdrożonym interfejsie z atrapą API: spinner/blokada podczas żądania i aktywnych zadań, utrzymanie blokady po reload, odblokowanie po ustaniu aktywności — zarówno ustawienia garderoby, jak i szczegóły zdjęcia. API health 200, niezalogowany odczyt aktywności 401. Nie zlecono rzeczywistych analiz w teście.
+Deployed only API/web, without migrations or worker restart. Deployed-UI Playwright with API mocks verified spinner/locking during submission and active jobs, persistence after reload, and unlocking when activity ends, for both wardrobe settings and image details. API health 200, anonymous activity read 401. No real analyses submitted.
 
-## 2026-11-09 — logowanie z iPhone przez LAN
+## 2026-11-09 — iPhone login over LAN
 
-Diagnoza: mutujące żądania z http://192.168.0.217:8080 były odrzucane przez porównanie Origin wyłącznie z APP_ORIGIN=http://localhost:8080. COOKIE_SECURE już było false dla lokalnego HTTP. Dodano jawny APP_ADDITIONAL_ORIGINS (CSV), walidowany jako dokładne HTTP(S) originy bez ścieżek, haseł i wildcardów. Lokalny .env rozszerzono wyłącznie o origin laptopa; localhost zachowany. Nie ufamy nagłówkowi Host i nie wyłączamy CSRF. Brak zmian SMTP, GoTrue, kluczy, portów czy danych użytkownika.
+Diagnosis: mutations from http://192.168.0.217:8080 were rejected because Origin was compared only with APP_ORIGIN=http://localhost:8080. COOKIE_SECURE was already false for local HTTP. Added explicit APP_ADDITIONAL_ORIGINS (CSV), validated as exact HTTP(S) origins without paths, passwords, or wildcards. Local .env gained only the laptop origin; localhost remained. Host headers are not trusted and CSRF is not disabled. No SMTP, GoTrue, key, port, or user-data changes.
 
-Typecheck API, lint i 4 testy przeszły: localhost/LAN z poprawnym CSRF docierają do walidacji danych logowania bez wywoływania Auth; obce originy i LAN bez CSRF nadal 403; odrzucanie nieprawidłowej konfiguracji. Brak testu rzeczywistego konta/hasła na fizycznym iPhonie.
+API typecheck, lint, and four tests passed: localhost/LAN plus valid CSRF reach credential validation without calling Auth; foreign origins/LAN without CSRF still return 403; invalid configuration rejected. No real-account/password test was run on a physical iPhone.
 
-Wdrożono wyłącznie API, health healthy. Rzeczywisty HTTP przez localhost:8080 i 192.168.0.217:8080: dozwolony origin + CSRF trafia do walidacji pustego formularza (400), brak CSRF oraz obcy origin są blokowane (403). Bez przesyłania danych konta i bez zmian hasła. Użytkownik powinien ponowić logowanie na fizycznym iPhonie.
+Deployed only API, healthy. Real localhost:8080 and 192.168.0.217:8080 HTTP checks: allowed Origin + CSRF reaches empty-form validation (400); missing CSRF/foreign Origin blocked (403). No account credentials sent or passwords changed. User should retry sign-in on the physical iPhone.
 
-## 2026-11-09 — uporządkowanie Git, Storage i metadanych
+## 2026-11-09 — Git, Storage, and metadata cleanup
 
-- Bazowo 65 testów i lint przechodziły. Rozdzielono istniejącą pracę na commity: ochrona danych, infrastruktura, schematy/reguły, historyczne migracje, CPU/ONNX/FashionSigLIP, worker, BFF, frontend i izolowane testy. Nie wykonano resetu, clean, amend, rebase ani push. Staged diffy sprawdzano i skanowano pod kątem wartości sekretów z lokalnego .env. Pliki investigation/data, backupy i wagi są ignorowane przez Git oraz narzędzia; nie było śledzonych prywatnych zdjęć czy danych (jedynie publiczny .env.example).
-- Backup Storage: investigation/backups/storage-migration/2026-11-09T20-42-51.893Z; 548 plików, 956513122 bajtów. Manifest SHA256 zgodny po testowym odtworzeniu plików; pełny postgres.dump odczytany przez pg_restore (lista i dekodowanie całego archiwum). Zachowano prywatną kopię konfiguracji z uprawnieniami 0600. Nie wykonywano odtworzenia PostgreSQL na osobnej instancji. Plan wykonania/rollbacku: investigation/reports/storage-migration/plan.md. Migracja Storage OCZEKUJE NA POTWIERDZENIE; obecny named volume i mounty niezmienione.
-- Ciepłota: wspólne reguły 1–5, wartości z wizji zastępowane regułami kategorii, akcesoria pomijane termicznie. Formularz aktualizuje domyślną wartość przy zmianie kategorii/podkategorii; ręczna korekta ma pierwszeństwo w bieżącej edycji i zapisuje wartość. Kolejna edycja zachowuje zapisaną wartość, a ponowna zmiana kategorii znów wylicza domyślną. Dodano znacznik ręcznej wartości, bez drugiej skali ciepłoty. Brak masowej aktualizacji istniejących ubrań.
-- Opcja AI w profilu: domyślnie wyłączona, osobna dla użytkownika, trwała, nie uruchamia zadań. Włączenie pozwala nadpisać obsługiwane metadane własnych ubrań przy następnej analizie (również ręczne), z zachowaniem ręcznych nazw, notatek, materiału/rozmiaru, zdjęć, właściciela i relacji. Dodano przechowywany wzór. Puste/null/unknown i nieprawidłowe enumy są pomijane. SQL blokuje wiersz, sprawdza owner/requester/membership/rewizję/preferencję i dokładny timestamp sprzed inferencji. Zmiana podczas analizy odrzuca automatyczny zapis. Naprawiono też wstawianie domyślnych pustych pól przez PATCH przy edycji pojedynczego pola.
-- Zastosowano wyłącznie nowe addytywne migracje 0013 i 0014. Porównanie fingerprintów przed/po potwierdziło niezmienność istniejących metadanych ubrań/profili, zdjęć, liczby obiektów Storage i haseł kont. Historyczna 0008 pozostaje niewdrożona — nie uruchamiano całego migratora ani zmian kontroli anulowania.
-- Paski: opcjonalny dobór wyłącznie dostępnego paska z tej samej garderoby do kompatybilnych spodni/chinosów/jeansów. Uwzględnia kolory i styl, preferuje uzasadnioną zgodność z obuwiem. Wyklucza dresy, legginsy, joggery, spódnice i spodnie na gumce. Nie zastępuje bazy stylizacji, nie wymyśla akcesoriów i nie dolicza ich ciepłoty.
-- Weryfikacja: 97 testów jednostkowych/API przeszło, lint i typecheck wszystkich pakietów bez błędów. SQL/RLS na dwóch syntetycznych kontach z pełnym rollbackiem: upload/permissions, nazwy, usuwanie, zbiorcza analiza, ciepłota, preferencja i zapis AI/konflikty. Testy przeglądarkowe na atrapach API: formularz ciepłoty (w tym ręczna korekta i kolejna edycja), trwały checkbox, izolacja użytkowników i cofnięcie po błędzie; brak automatycznego masowego kolejkowania. Pierwsze podejścia testów wykryły nieaktualne oczekiwanie ciepłoty polo i błędne selektory/nazwy fixture; poprawiono je, a logi zachowano w investigation. Bez zapytań do Ollamy/GPU i bez nowych modeli.
+- Initially 65 tests/lint passed. Existing work was split into commits for data protection, infrastructure, schemas/rules, historical migrations, CPU/ONNX/FashionSigLIP, worker, BFF, frontend, and isolated tests. No reset, clean, amend, rebase, or push. Staged diffs were reviewed/scanned against local .env secret values. investigation/data, backups, and weights are ignored by Git/tools; no private photos/data were tracked, only the public .env.example.
+- Storage backup: investigation/backups/storage-migration/2026-11-09T20-42-51.893Z; 548 files, 956513122 bytes. SHA256 manifest matched after test extraction; pg_restore read the full postgres.dump listing and decoded archive. Private configuration copy retained with mode 0600. PostgreSQL was not restored on a separate instance. Execution/rollback plan: investigation/reports/storage-migration/plan.md. Storage migration AWAITED APPROVAL; named volume/mounts unchanged.
+- Warmth: shared 1–5 rules, vision values replaced by category rules, accessories thermally ignored. Form default updates on category/subcategory changes; manual correction takes priority in the current edit and is saved. Reopening preserves it; another category change recalculates the default. Added a manual-value marker without a second warmth scale. Existing garments were not bulk-updated.
+- Profile AI option: disabled by default, per-user, durable, and does not submit jobs. Enabling it permits supported metadata overwrites on future analyses, including manual fields, while protecting manual names, notes, material/size, images, ownership, and relationships. Added stored pattern. Empty/null/unknown values and invalid enums are skipped. SQL locks the row and checks owner/requester/membership/revision/preference plus the exact pre-inference timestamp. Edits during analysis reject automatic persistence. Also fixed PATCH inserting empty defaults when editing one field.
+- Applied only new additive migrations 0013/0014. Before/after fingerprints confirmed unchanged garment/profile metadata, images, Storage counts, and account passwords. Historical 0008 remains unapplied; the full migrator and cancellation-control changes were not run.
+- Belts: optionally select only an available belt from the same wardrobe for compatible trousers/chinos/jeans. Consider color/style and prefer justified footwear coordination. Exclude tracksuits, leggings, joggers, skirts, and elastic-waist trousers. Belts do not replace outfit bases, invent accessories, or contribute warmth.
+- Verification: 97 unit/API tests, lint, and all-package typechecks passed. Fully rolled-back two-user SQL/RLS covered uploads/permissions, names, deletion, bulk analysis, warmth, preferences, AI writes/conflicts. Mock-browser tests covered warmth defaults/manual correction/reopening, persistent checkbox, user isolation, error rollback, and no bulk auto-queueing. Initial tests found outdated polo warmth expectations and incorrect fixture selectors/names; fixed them and retained logs in investigation. No Ollama/GPU requests or new models.
 
-## 2026-11-10 — wznowienie po wyłączeniu komputera
+## 2026-11-10 — resume after shutdown
 
-Sprawdzono stan bez ponawiania migracji i buildu. Docker Desktop wymagał uruchomienia; istniejące usługi wróciły jako healthy. Potwierdzono 92 ubrania, 92 rekordy zdjęć, 548 obiektów Storage i obecność 0013/0014 z checksumami zgodnymi z repozytorium. Wszystkie trzy kontenery aplikacji używały starszych obrazów; dokończono wyłącznie ich wdrożenie z wcześniej zbudowanych obrazów (`--no-deps --no-build --wait`). Supabase i mounty nie były odtwarzane ani zmieniane.
+Checked state without rerunning migrations/builds. Docker Desktop needed starting; existing services returned healthy. Confirmed 92 garments, 92 image rows, 548 Storage objects, and 0013/0014 with matching repository checksums. All three application containers used older images; only their deployment from previously built images was completed (`--no-deps --no-build --wait`). Supabase/mounts were not recreated or changed.
 
-Nowe API/worker/web są healthy. Brakujące testy na wdrożonym interfejsie (z atrapami API) przeszły: formularz ciepłoty, zapis ręcznej korekty, ponowna zmiana kategorii w kolejnej edycji, checkbox domyślnie off, zachowanie po reload, izolacja użytkowników, cofnięcie wartości po błędzie i brak masowej analizy. Odczyt przez wewnętrzny Storage API jednego zdjęcia należącego do wskazanego użytkownika: oryginał, wycięcie, katalog i miniatura; wszystkie SHA256 zgodne z wcześniejszym backupem. Test nie zapisywał ani nie usuwał obiektów. Zachowane poprzednie wyniki 97 testów, lint, typecheck i build — nie uruchamiano ich ponownie bez potrzeby. Rzeczywiste logowanie hasłem na koncie użytkownika oraz pełne odtworzenie PostgreSQL na osobnej instancji pozostają nieweryfikowane.
+New API/worker/web healthy. Previously missing deployed-UI mock tests passed: warmth form/manual correction, category change after reopening, checkbox initially off, reload persistence, user isolation, error rollback, and no bulk analysis. Read one authorized image’s original/cutout/catalog/thumbnail through internal Storage API; all SHA256 values matched backup. No object writes/deletes. Earlier 97-test/lint/typecheck/build results were retained without unnecessary reruns. Real user-password sign-in and a full isolated PostgreSQL restore remain unverified.
 
-Storage nadal korzysta z `smart-wardrobe_storage-data`; ./data/storage nie istnieje. Backup i plan pozostają w ignorowanym investigation. Migracja do katalogu projektu nadal wymaga osobnego potwierdzenia. Historyczna 0008 oraz propozycja dodatkowych ograniczeń ścieżek nie zostały zastosowane. Nie wykonywano push, zmiany modeli, nowych eksperymentów ani masowej analizy ubrań.
+Storage still uses `smart-wardrobe_storage-data`; ./data/storage does not exist. Backup/plan remain in ignored investigation. Moving into the project directory still requires approval. Historical 0008 and proposed path restrictions were not applied. No push, model changes, new experiments, or mass analysis.
 
-Dodatkowa weryfikacja po awarii zasilania: odczytowe porównanie całego drzewa starego wolumenu Storage z wcześniejszym manifestem backupu potwierdziło 548/548 plików, bez braków, dodatkowych plików i zmian SHA256. Test ochrony logowania: zdrowie API 200, niezalogowane endpointy konta/preferencji 401, pusty formularz z prawidłowym originem i CSRF dociera do walidacji (400), bez przesyłania hasła. Kod API/workera/wspólnych reguł w kontenerach zgodny z bieżącymi plikami repozytorium. Odtworzono wyłącznie kontenery api, web i worker.
+Additional post-power-failure verification: read-only comparison of the entire old Storage volume tree with backup manifest confirmed 548/548 files with no missing/extra files or SHA256 changes. API health 200; anonymous account/preferences endpoints 401; empty form with valid Origin/CSRF reaches validation (400) without a password. API/worker/shared rules in containers match current repository files. Only api/web/worker containers were recreated.
 
-## 2026-11-10 — zatwierdzona migracja Storage: blocker macOS i bezpieczny rollback
+## 2026-11-10 — approved Storage migration: macOS blocker and safe rollback
 
-- Przy zatrzymanych API/worker/Storage/imgproxy wykonano świeży backup plików i pełnego PostgreSQL: investigation/backups/storage-migration/2026-11-10T16-44-39.796Z. Źródło stabilne, 548 plików / 956513122 bajtów; archiwum plikowe porównane SHA256, pg_restore odczytał listę i całą zawartość dumpu. Zachowano poprzedni backup.
-- Utworzono ./data/storage i skopiowano pełne drzewo. Sumy plików, rozmiary, UID/GID oraz tryby były zgodne. Przepięto wyłącznie storage i imgproxy; obie usługi zgłaszały healthy.
-- Test rzeczywistego Storage API zwrócił 500 z ENOTSUP: fs-xattr nie obsługuje atrybutów rozszerzonych na obecnym bind mouncie macOS/Docker Desktop. Zainstalowany backend v1.89.12 bezwarunkowo odczytuje i zapisuje Linux user.supabase.content-type/cache-control; nie znaleziono wspieranego wyłącznika. Sam healthcheck nie wykrywa tej niezgodności. Nie zmieniano kodu obrazu, wersji usług ani globalnych ustawień Docker Desktop.
-- Przywrócono dokładnie oba wcześniejsze mounty named volume, odtworzono tylko storage/imgproxy i uruchomiono API/worker. Wszystkie usługi healthy. Odczyt oryginału, cutoutu, katalogu i miniatury z powrotem poprawny, ich SHA256 zgodne ze świeżą kopią. Porównanie metadanych kont, haseł, profili, sesji, ubrań, zdjęć, zadań, garderób i relacji nie wykazało zmian; nadal 548 obiektów i 9 kont. Próba zatrzymała się przed tworzeniem konta, garderoby i pliku testowego.
-- Świeży backup uzupełniono o extended-attributes.json: 1096 atrybutów dla 548 plików. Jest niezbędny przy odtwarzaniu backendu plikowego na wspieranym filesystemie. Dotychczasowa kontrola SHA/mode/UID/GID nie obejmowała xattr — dlatego sama kopia tar i DB nie jest kompletnym obrazem metadanych tego backendu. Nie deklarowano pełnego odtworzenia PostgreSQL na oddzielnej instancji.
-- Stan: migracja ZABLOKOWANA przez niezgodność filesystemu, rollback zakończony. Stary wolumen i wszystkie backupy zachowane. ./data/storage to nieaktywna kopia, nowe uploady nadal trafiają do named volume. Pliki data i investigation są ignorowane. Nie utworzono commita chore(storage): use project-local storage directory, ponieważ taki mount nie został wdrożony skutecznie. Konfiguracja aplikacji pozostaje niezmieniona; do repo trafia tylko raport w dokumentacji.
+- With API/worker/Storage/imgproxy stopped, created fresh file/full-PostgreSQL backups: investigation/backups/storage-migration/2026-11-10T16-44-39.796Z. Stable source: 548 files / 956513122 bytes; image archive SHA256 verified and pg_restore read listing/full dump. Earlier backup retained.
+- Created ./data/storage and copied the full tree. Checksums, sizes, UID/GID, and modes matched. Rewired only storage/imgproxy; both healthy.
+- Real Storage API returned 500 ENOTSUP: fs-xattr does not support extended attributes on the current macOS/Docker Desktop bind mount. Installed backend v1.89.12 unconditionally reads/writes Linux user.supabase.content-type/cache-control attributes; no supported disable switch was found. Healthchecks alone miss this incompatibility. Image source, service versions, and global Docker Desktop settings were unchanged.
+- Restored both exact previous named-volume mounts, recreated only storage/imgproxy, and started API/worker. All services healthy. Original/cutout/catalog/thumbnail reads worked again with SHA256 matching fresh backup. Account/password/profile/session/garment/image/job/wardrobe/relationship metadata comparison found no changes; 548 objects and nine accounts remained. The attempt stopped before creating a test account, wardrobe, or file.
+- Added extended-attributes.json to the fresh backup: 1096 attributes for 548 files, required to restore the file backend on a supported filesystem. Previous SHA/mode/UID/GID checks omitted xattrs; image tar plus database alone was therefore not a complete metadata backup. No full separate-instance PostgreSQL restore was claimed.
+- State: migration BLOCKED by filesystem incompatibility; rollback completed. Old volume/all backups retained. ./data/storage is inactive; new uploads still use the named volume. data/investigation are ignored. No chore(storage): use project-local storage directory commit was created because that mount was not deployed successfully. Application configuration remains unchanged; only the documentation report enters the repository.
 
-## 2026-11-10 — rzeczywiste zdjęcia w katalogu projektu: migracja zakończona
+## 2026-11-10 — real images in the project directory: migration completed
 
-- Na ponowne żądanie użytkownika przygotowano własną, ograniczoną adaptację przypiętego Supabase Storage v1.89.12: zamiast xattr używa oddzielnych plików JSON. To adaptacja projektu, nie funkcja upstream. Obraz jest przypięty digestem; patch sprawdza SHA256 całego backendu i liczbę miejsc zmian. Nie dodano S3 ani usług chmurowych. Zachowano API, RLS, bazę i formaty oryginalnych zdjęć.
-- Aktywny bind mount: `./data/storage:/var/lib/storage`; dodatkowe wymagane metadane: `./data/storage-metadata:/var/lib/storage-metadata`. Imgproxy odczytuje ten sam katalog zdjęć read-only. Pliki są prawdziwymi JPEG/PNG/WebP, bez zmiany bajtów. Nazwy i katalogi wersji Supabase pozostają zachowane, także nazwy UUID bez rozszerzeń.
-- Przed przełączeniem wykonano świeży backup: `investigation/backups/storage-migration/2026-11-10T17-18-05.465Z/`. Obejmuje pełny dump PostgreSQL, archiwum 548 zdjęć, manifesty SHA256, 1096 xattrs i prywatną konfigurację. Źródło stabilne; dump odczytany przez pg_restore, bez pełnego odtworzenia oddzielnej instancji. Stary named volume, wcześniejsze backupy oraz wcześniejsza nieaktywna kopia (przeniesiona do `data/storage-before-sidecars-2026-11-10T17-20-31.242Z/`) zachowane.
-- W izolacji na rzeczywistym macOS bind mouncie sprawdzono upload, Content-Type/Cache-Control/Content-Encoding, range, ETag/304, copy, delete, multipart complete/abort i odczyt w nowym kontenerze. Odczyt wszystkich 548 istniejących zdjęć przez skompilowany backend miał zgodne SHA256 i typy obrazów. Testy regresji adaptera: 5/5; cały zestaw: 102/102, lint i typecheck API/web/workera/shared przeszły. Budowa wyłącznie obrazu Storage oraz walidacja Compose przeszły; brak zmian aplikacji React/API/workera.
-- Po przełączeniu prawdziwy Storage API odczytał cztery warianty istniejącego zdjęcia. Izolowane tymczasowe konto wykonało upload/download z porównaniem SHA256 i usunięcie wyłącznie testowego pliku; dostęp anonimowy i od obcego użytkownika odrzucony. Testowe konto i garderoba usunięte. Porównanie danych istniejących kont, haseł, profili, sesji, garderób, ubrań, zdjęć i jobs z backupem nie wykazało zmian. Nadal 548 obiektów; wszystkie oryginalne pliki mają zgodne SHA256, 548 sidecarów.
-- Odtworzono tylko Storage i imgproxy, API/worker zatrzymano na czas kopiowania i ponownie uruchomiono. Compose start nieoczekiwanie uruchomił też istniejący kontener migratora jako zależność; kontrola historii potwierdziła brak nowych migracji (również brak 0008). Pomocniczy skrypt skorygowano na bezpośredni start dwóch istniejących kontenerów. Wszystkie 16 usług healthy, `/api/health` 200, brak nowych błędów Storage. Nie weryfikowano ponownie fizycznej przeglądarki ani hasła użytkownika.
-- Oba aktywne katalogi trzeba odtąd backupować razem z PostgreSQL. Adapter zakłada jedną instancję Storage; aktualizacja upstream wymaga przeglądu i testów. Zapis obrazu i sidecaru nie stanowi jednej transakcji systemu plików. Rollback po nowych uploadach wymaga przeniesienia aktualnych plików i metadanych, a nie prostego powrotu na stary wolumen. Dane pozostają ignorowane przez Git.
+- At the user’s renewed request, prepared a narrow project adaptation of pinned Supabase Storage v1.89.12, using separate JSON files instead of xattrs. This is a project adaptation, not an upstream feature. Image pinned by digest; patch verifies the backend’s full SHA256 and modification count. No S3/cloud services added. API, RLS, database, and original image formats preserved.
+- Active bind mount: `./data/storage:/var/lib/storage`; additional required metadata: `./data/storage-metadata:/var/lib/storage-metadata`. Imgproxy reads the same image directory read-only. Files remain real JPEG/PNG/WebP with unchanged bytes. Supabase version directories/names remain, including extensionless UUIDs.
+- Fresh pre-switch backup: `investigation/backups/storage-migration/2026-11-10T17-18-05.465Z/`, containing full PostgreSQL dump, 548-photo archive, SHA256 manifests, 1096 xattrs, and private configuration. Source stable; pg_restore read the dump, without a separate full-instance restore. Old named volume, earlier backups, and former inactive copy (moved to `data/storage-before-sidecars-2026-11-10T17-20-31.242Z/`) retained.
+- Isolated real macOS bind-mount tests covered upload, Content-Type/Cache-Control/Content-Encoding, range, ETag/304, copy/delete, multipart complete/abort, and new-container reads. Compiled backend read all 548 existing images with matching SHA256/types. Adapter regressions 5/5; full tests 102/102, lint, all-package typechecks passed. Only Storage image build and Compose validation were performed; React/API/worker unchanged.
+- After switching, real Storage API read four existing image variants. An isolated temporary account uploaded/downloaded with SHA256 checks and deleted only its test file; foreign/anonymous access denied. Fixture account/wardrobe removed. Existing account/password/profile/session/wardrobe/garment/image/job data matched backup. Still 548 objects, all original SHA256 values matching, with 548 sidecars.
+- Recreated only Storage/imgproxy; API/worker stopped during copying and restarted. Compose startup unexpectedly also started the existing migrator dependency; history confirmed no new migrations, including no 0008. Helper was corrected to start the two existing containers directly. All 16 services healthy, `/api/health` 200, no new Storage errors. Physical browser/user password was not reverified.
+- Back up both active directories together with PostgreSQL. Adapter assumes one Storage instance; upstream upgrades need review/tests. Image and sidecar writes are not one filesystem transaction. After new uploads, rollback requires transferring current files/metadata, not simply returning to the old volume. Data remains ignored by Git.
 
-## 2026-11-10 — OrbStack i standardowy Supabase Storage z natywnymi xattr
+## 2026-11-10 — OrbStack and standard Supabase Storage with native xattrs
 
-- Na wyraźną zgodę użytkownika zainstalowano OrbStack 2.2.5 dla Intel Mac. Kontekst `orbstack` jest aktywny. Docker Desktop nie został odinstalowany ani wyłączony; dwa kontenery innego projektu nadal działają. Nie przenoszono ich danych. Stare kontenery Smart Wardrobe są zatrzymane i zachowane.
-- Oficjalny Storage v1.89.12 poprawnie zapisał i odczytał cztery `user.supabase.*` xattrs na oddzielnym bind mouncie, także z nowego kontenera; atrybuty są widoczne z macOS. Pierwszy warunek testowy błędnie zakładał dokładnie cztery wszystkie atrybuty — macOS dodaje własne. Poprawiono test, aby weryfikował przestrzeń nazw Supabase, bez ponawiania zakończonego zapisu.
-- Skopiowano lokalnie 16 istniejących obrazów usług, bez pobierania modeli i bez rebuildów. Docker 29 reprezentuje identyfikatory obrazów i puste pola konfiguracji inaczej; porównano zgodność wszystkich warstw RootFS, platformy, daty utworzenia i efektywnych parametrów uruchomienia. Nie zmieniono wersji usług, konfiguracji Ollamy ani SMTP.
-- Przed transferem danych zatrzymano wyłącznie Smart Wardrobe, wykonano pełny `postgres.dump`, `cluster.sql` z rolami, kopię konfiguracji, zdjęć i ówczesnych sidecarów oraz zimne archiwa siedmiu wolumenów. Backup: `investigation/backups/orbstack-migration/2026-11-10T17-56-49.986Z/`. Archiwa porównano plik po pliku z manifestami SHA256, dump odczytano przez pg_restore. Wszystkie siedem wolumenów odtworzono w OrbStack i ponownie porównano zawartość, UID/GID, tryby i symlinki. PostgreSQL uruchomił się z odtworzonej zimnej kopii; nie odtwarzano SQL dumpu przez pg_restore.
-- Odtworzono 1096 prawdziwych xattrs na 548 zdjęciach, sprawdzając SHA256 przed i po. Aktywny Storage używa teraz niezmodyfikowanego `supabase/storage-api:v1.89.12` i jednego mountu `./data/storage:/var/lib/storage`. Usunięto obraz/build adaptera z Compose, jego kod i pięć nieaktualnych testów. Dawny `data/storage-metadata/` pozostał nietknięty jako nieaktywne zabezpieczenie; nie jest montowany ani aktualizowany.
-- Test rzeczywistego niezmodyfikowanego FileBackend w izolacji: upload, nagłówki MIME/cache/encoding, range, ETag/304, copy/delete, multipart complete/abort i odczyt po nowym starcie kontenera — wszystkie przeszły. Zachowano wykonywalny przykład `infra/storage/native-smoke.cjs`. Po uruchomieniu Supabase: odczyt czterech istniejących wariantów zdjęcia zgodny z backupem, upload/download SHA256 i delete izolowanego pliku przez autoryzowany Storage API, odmowa obcemu użytkownikowi i anonimowemu klientowi. Tymczasowe konto i garderobę testową posprzątano.
-- Przed dopuszczeniem zapisów aplikacji porównano fingerprinty istniejących kont, haseł, profili, sesji, garderób, relacji, ubrań, zdjęć, obiektów Storage i jobs — bez zmian. Historia migracji jest identyczna; migratora nie kopiowano ani nie uruchamiano, historyczna 0008 nadal niewdrożona. BFF/worker/web uruchomiono przez `--no-deps --no-build` po weryfikacji. Porównanie środowisk kontenerów nie wykazało nieoczekiwanych różnic; jedyną celowo usuniętą zmienną jest FILE_STORAGE_METADATA_PATH.
-- Wszystkie 16 usług healthy, publiczne `/api/health` 200, brak błędów Storage/workera/API w nowych logach. Testy: 97/97, lint oraz typecheck API/workera/web/shared przeszły; usunięte pięć testów dotyczyło wycofanego adaptera. Nie wykonywano nowych zapytań AI ani ponownego builda frontendu. Rzeczywista przeglądarka i hasło istniejącego użytkownika pozostają nieweryfikowane; logowanie hasłem tymczasowego konta testowego przeszło przez GoTrue.
-- Dokumentacja wskazuje teraz OrbStack na macOS, standardowy backend i konieczność zachowania xattrs w backupach. Round-trip hostowego BSD tar `--xattrs` na osobnym pliku potwierdził zachowanie wszystkich czterech atrybutów, także przy odczycie z kontenera. Backupy i stary silnik są zachowane, a powrót po nowych zapisach wymaga aktualnej synchronizacji danych — nie prostego uruchomienia starej bazy. Nie wykonano push ani operacji na Proxmox.
+- With explicit user permission, installed OrbStack 2.2.5 for Intel Mac; `orbstack` context is active. Docker Desktop was neither removed nor disabled; two other-project containers still run without moving their data. Old Smart Wardrobe containers are stopped and preserved.
+- Official Storage v1.89.12 wrote/read four `user.supabase.*` xattrs correctly on an isolated bind mount, including from a fresh container; attributes are visible from macOS. The initial assertion incorrectly expected exactly four total attributes, but macOS adds its own. Corrected the test to check Supabase’s namespace without repeating completed writes.
+- Copied 16 existing service images locally, without model downloads/rebuilds. Docker 29 represents image IDs and empty configuration fields differently; all RootFS layers, platform, creation dates, and effective launch parameters were compared. Service versions, Ollama configuration, and SMTP were unchanged.
+- Before transfer, stopped only Smart Wardrobe and created full `postgres.dump`, `cluster.sql` with roles, configuration/photo/then-sidecar copies, and cold archives of seven volumes. Backup: `investigation/backups/orbstack-migration/2026-11-10T17-56-49.986Z/`. Compared archives file-by-file against SHA256 manifests; pg_restore read the dump. All seven volumes were restored in OrbStack and content/UID/GID/modes/symlinks compared again. PostgreSQL started from the restored cold copy, not a pg_restore SQL restoration.
+- Restored 1096 real xattrs on 548 photos, checking SHA256 before/after. Active Storage now uses unmodified `supabase/storage-api:v1.89.12` and a single `./data/storage:/var/lib/storage` mount. Removed the adapter build/image from Compose, its code, and five obsolete tests. Former `data/storage-metadata/` remained untouched as an inactive safeguard; it is not mounted or updated.
+- Real unmodified FileBackend isolation tests passed uploads, MIME/cache/encoding headers, range, ETag/304, copy/delete, multipart completion/abort, and reads after a new container start. Executable example retained at `infra/storage/native-smoke.cjs`. After Supabase startup: four existing image variants matched backup; authorized Storage API upload/download SHA256 and isolated-file deletion passed, denying foreign/anonymous access. Temporary test account/wardrobe cleaned up.
+- Before allowing application writes, fingerprints confirmed unchanged existing accounts/passwords/profiles/sessions/wardrobes/relationships/garments/photos/Storage objects/jobs. Migration history is identical; migrator was not copied/run and historical 0008 remains unapplied. BFF/worker/web started through `--no-deps --no-build` after verification. Container environment comparison found no unexpected differences; FILE_STORAGE_METADATA_PATH was the only intentionally removed variable.
+- All 16 services healthy, public `/api/health` 200, no new Storage/worker/API log errors. Tests 97/97, lint, and API/worker/web/shared typechecks passed; the five removed tests covered the retired adapter. No new AI requests/frontend rebuilds. Real-browser and existing-user password login remained unverified; temporary-account password login passed through GoTrue.
+- Documentation now specifies OrbStack on macOS, standard backend, and xattr-preserving backups. Host BSD tar `--xattrs` round-trip on an isolated file preserved all four attributes, including container reads. Backups/old engine retained; returning after new writes requires current data synchronization, not simply starting the old database. No push or Proxmox operations.
 
-## 2026-11-10 — usunięcie nieaktywnych kopii z data
+## 2026-11-10 — removal of inactive copies from data
 
-Na wyraźne żądanie użytkownika usunięto `data/storage-before-sidecars-2026-11-10T17-20-31.242Z/` (551 plików, w tym pliki Findera) i nieużywany `data/storage-metadata/` (548 plików JSON), około 913 MiB. Przed operacją sprawdzono bieżącą konfigurację mountów i obecność zweryfikowanego niezależnego backupu. Lista i rozmiary wszystkich 556 aktualnych plików w `data/storage/` pozostały identyczne. Nie usuwano archiwów `investigation/backups/`, wolumenów ani danych SQL i nie uruchamiano usług. W chwili kontroli OrbStack nie miał kontenerów, stare kontenery projektu w Docker Desktop były zatrzymane; nie deklarowano bieżącego health aplikacji. Raport: `investigation/reports/orbstack-migration/removed-inactive-copies.json`.
+At the user’s explicit request, removed `data/storage-before-sidecars-2026-11-10T17-20-31.242Z/` (551 files including Finder files) and unused `data/storage-metadata/` (548 JSON files), about 913 MiB. First verified current mounts and an independent validated backup. Names/sizes of all 556 active files in `data/storage/` remained identical. No `investigation/backups/` archives, volumes, or SQL data were deleted; services were not started. At inspection, OrbStack had no containers and old Docker Desktop project containers were stopped, so no current health claim was made. Report: `investigation/reports/orbstack-migration/removed-inactive-copies.json`.
 
 ## 2026-11-10 — instrukcja aplikacji w README
 
-Przebudowano README: opis produktu, lista funkcji, uruchomienie nowej i istniejącej instalacji, przewodnik po ekranach i imporcie 200 zdjęć, obrót, reguły zapisu AI, stylizacje, pranie, rodzina, architektura z diagramami Mermaid, konfiguracja, kolejki, bezpieczeństwo, backupy xattr i ograniczenia. Usunięto nieaktualne twierdzenia o niewdrożonej analizie i nieaktywnej kopii data/storage. Sprawdzono routing i limity w kodzie, konfigurację obrazów oraz istnienie lokalnych odnośników. Zmiany wyłącznie dokumentacyjne; nie uruchamiano kontenerów, migracji, modeli ani ponownych testów aplikacji.
+Rebuilt README covering product, features, fresh/existing installation, screens and 200-image import, rotation, AI persistence, outfits, laundry, family, Mermaid architecture, configuration, queues, security, xattr backups, and limitations. Removed obsolete claims about missing analysis/inactive data/storage. Verified routing/limits, image configuration, and local links against code. Documentation-only; no containers, migrations, models, or unnecessary application tests were run.
+
+## 2026-11-11 — garment details and navigation UX
+
+Sidebar separates wardrobe selector/create button and scrollable navigation with pinned account panel. Garment details use a 35% photo / 65% properties layout, with full-width recommendations. Properties edit inline, suggestions use a compact accept/reject panel, and technical statuses collapse. Rotation provides immediate local preview, submits one absolute angle after an 800 ms debounce, and supports retry; originals remain unchanged. Added mocked Playwright for Enter/Escape editing, suggestions, double rotation, retries, fresh catalog cache, and desktop/mobile overflow. Verified 105/105 Vitest, ESLint, API/web typecheck, web build, and 2/2 Playwright. No API/schema/container/data changes.
+
+## 2026-11-11 — garment property autocomplete
+
+Brand, color, material, pattern, style, and subcategory fields suggest existing values from the same wardrobe. Suggestions use authenticated `GET /api/garments?wardrobe_id=...` including archived garments; normalization removes excess spaces/case-insensitive duplicates. New values are saved only on the current garment through existing PATCH and become future suggestions. Added filtering, arrows/Enter/Escape, and touch/mouse selection. No migrations/API changes. Web typecheck, ESLint, 105/105 Vitest, build, and 2/2 desktop/mobile Playwright passed with mocked API and no user-data writes.
+
+## 2026-11-11 — custom fields deployed
+
+Confirmed the old schema had no custom definitions/values; `cleanliness` is laundry status rather than wear condition. After approval, applied `0015_custom_garment_properties.sql`: three definition/option/JSONB-value tables with wardrobe-isolating foreign keys/RLS and system `wear_condition` (`unknown` for existing garments). API uses user sessions, validates types/options; garment UI creates fields, manages names/order/visibility, adds options, and saves individual values. Added rolled-back two-user RLS and mocked UI tests. 114/114 Vitest, ESLint, API/web/shared typecheck, builds, and 2/2 dev-server Playwright passed. Migrator confirmed `ebbbaa…a9b2414` checksum; RLS passed. Only API/web rebuilt/recreated, both healthy; worker/database stayed healthy. Active bundle includes UI and OpenAPI lists endpoints. Extra live CRUD stopped before endpoints because existing SMTP relay rejected test registration (`450 Development SMTP forwarding failed`); verified no test accounts were stored. SMTP unchanged.
+
+## 2026-11-11 — garment readiness, navigation, and single-editor coordination
+
+Added derived outfit-readiness status (category and at least one color) to cards/details beside cleanliness; archive/laundry remain separate availability states. Catalog route state stores filters, sorting, and visible ID order; details support previous/next, preserve scrolling, and show a deleted-record state. System/custom editors share a coordinator: field changes first save the previous field; errors keep drafts, Escape cancels, and outside clicks commit. Fixed suggestion focus, z-index, and overflow. No migrations/API changes. 117 Vitest tests, all-package typechecks, ESLint, web build, and 2/2 desktop/mobile Playwright passed.
+
+## 2026-11-11 — questionnaire and style profile
+
+Added 30 questions in seven sections, single/multiple selection, skipping, step progress, and autosave per change. Per-user local drafts synchronize with API when online again. “My style” derives a summary, missing information, and hard restrictions separately from preferences. Added navigation entry and nonblocking dashboard shortcut. API uses user sessions, Zod, and an own-profile-only RPC; RLS does not use service_role.
+
+Migration `0016_style_profile.sql` applied transactionally to local OrbStack development database; checksum saved in `private.schema_migrations`. Two-user RLS passed with rollback. Only API/web rebuilt/recreated; all services remained healthy, anonymous style endpoint returned 401, page/API health 200. No production/user-data changes. Code verification: 122/122 Vitest, shared/API/worker/web typecheck, ESLint, web build, Playwright 1/1. Details: `docs/style-profile-migration.md`.
+
+## 2026-11-11 — Gemini API settings deployed locally
+
+Added Gemini AI settings: save/replace/delete key, discover/select models, and asynchronous queued connection test with cancellation. API encrypts keys using AES-256-GCM; full values never return to UI, while worker has narrow encrypted-column access. Added session/CSRF endpoints, BullMQ tasks with durable PostgreSQL status, deduplication, global queue cap, and RLS. Shared Redis Lua limiter defaults to 12 RPM; `GEMINI_SHARED_QUOTA_ID` links different keys in one project. At most three attempts for transient 429/5xx with Retry-After/backoff; permanent errors, daily limits, and timeouts are not retried. No real requests or wardrobe/profile data sent.
+
+Additive `0017_gemini_configuration.sql` applied locally after PostgreSQL backup (`investigation/backups/gemini-migration/postgres-before-0017.dump`); history confirmed it was the only pending migration. RLS tests found an inherited Supabase table grant, so 0018 was added/applied to restrict `gemini_credentials` reads to safe columns. Two-user RLS confirmed isolation/deduplication/ciphertext denial; full transaction rolled back with 0 fixtures. Missing `GEMINI_ENCRYPTION_KEY` was set in ignored `.env` without revealing it. Only API/worker/web rebuilt/recreated; Auth/database/Storage/Redis/others retained containers/volumes and remained healthy. Smoke checks: API/worker health 200, anonymous Gemini settings 401, static Gemini UI present, RLS tables present, no Gemini errors. No Google key was saved, so no real Gemini request was sent. Earlier checks: 133/133 Vitest, shared/API/worker/web typecheck, ESLint, Compose validation, web build, mocked Playwright 1/1. TPM/RPD are reserved, not enforced. Details: `docs/gemini-setup.md`.
+
+After “Gemini configuration permission denied,” reproduction showed PostgREST UPSERT needed table grants unsafe for ciphertext. Migrations 0019–0020 revoked direct API-role DML and routed writes/model changes/deletion through private SQL functions restricted to `wardrobe_session`, called after BFF authentication. RLS also found default Supabase DML grants; 0020 revoked them. Final `tests/gemini-rls.sql` passed BFF save/replace/model/delete, no direct DML/ciphertext reads, isolation, and deduplication in a rolled-back transaction (0 fixtures). Only API rebuilt/recreated; health 200, active container has new code. Other services/volumes unchanged.
+
+Investigated model discovery failure: one `models.list` using saved settings and the shared Redis limiter returned Google HTTP 400 `INVALID_ARGUMENT`: “API key not valid. Please pass a valid API key.” This indicates rejection of the saved key, not model-list parsing; the key was not printed. Worker now classifies this 400 as `invalid_key` instead of a generic error. Ten tests, worker typecheck, and lint passed; only worker recreated and healthy.
+
+## 2026-11-11 — Gemini jako generator stylizacji
+
+Main `/api/recommendations` route now creates a durable Gemini task instead of running the local algorithm. Worker uses a narrow security-definer function to load only clean, non-archived wardrobe garments, structured profile, and criteria; no images, notes, or personal data enter the prompt. One `generateContent` call reuses Redis limiting/retries; Gemini worker is sequential. JSON is checked against catalog/hard restrictions; invalid, foreign, unavailable, or incomplete garment IDs never reach UI.
+
+Outfit UI supports occasion, temperature, optional weather/requirements, count, polling, cancellation, actual garment photos, rationales, and separately identified missing items with user acknowledgement. Garment details display already saved outfits containing that item without hidden AI generation. Added prompt, restriction, ID, missing-item, retry/provider, and authentication tests. At initial verification, `0021_gemini_outfit_generation.sql` was unapplied and Docker unavailable; after a reported error it was deployed with fixes 0022/0023.
+
+Code verification: 141/141 Vitest, repository ESLint, API/worker/web/shared typechecks passed. Vite production build passed with only the 789 kB main-bundle warning. No Google Gemini requests. `0021` needed applying through the local migrator once Docker access returned; the old algorithm remains shared code but is not used by generation endpoint/screen.
+
+After deployment of the reported “Failed to save Gemini configuration” error, a transactional test found an ambiguous `wardrobe_id` variable and context aggregation missing `GROUP BY` in outfit SQL. Applied 0021 was not edited; additive 0022/0023 fixed them. `tests/gemini-rls.sql` passed with `ROLLBACK`; readback confirmed 0 test accounts. Migrator applied 0021–0023, API/web returned 200, all Compose services healthy. No real Gemini requests.
+
+After saved outfit descriptions disappeared, added durable `rationale`, `wearing_tips`, `missing_items` fields to favorites. Updated shared validation, `save_outfit` persistence, reads, and UI; existing rows receive safe `null`/empty-list values. Applied additive `0024_persist_saved_outfit_descriptions.sql`; transactional `tests/saved-outfit-rls.sql` verified text, tips, missing items, and IDs before `ROLLBACK`. All-package typechecks and 18 focused tests passed; API/web 200, services healthy.
+
+## 2026-11-12 — consistent dropdowns
+
+Added shared `DropdownSelect` for single-choice catalog/form/settings/generator lists, using the same appearance, selection, shadow, and rounding as wardrobe selection, with keyboard/typeahead and positioning outside clipping containers. Multi-select remains native. E2E covers sorting/category choice on desktop/mobile. Web typecheck, ESLint, and 2/2 Playwright passed; only `web` recreated and healthy, `http://localhost:8080/` returns 200 with new assets.
+
+Custom selection failed because the inline coordinator treated portaled menu clicks as outside clicks and ended editing before selection. Menus now receive the active editor ID, keeping selection active; cancelling `mousedown` preserves focus without blocking clicks. E2E adds low/medium/high options, clicks medium, and verifies saved values on desktop/mobile. Playwright 2/2, web typecheck, ESLint, and `git diff --check` pass. Only `web` recreated.
+
+## 2026-11-12 — UI regression fixes after daisyUI migration
+
+Using `docs/ui-regressions.png`, fixed layout causes: daisyUI `inline-flex` controls appeared beside label titles; fields are now block-level and full-width. Unified field grid widths, bounded outfit generator panel width, and responsive controls. Gemini fields stay within settings columns; long model names truncate within controls. Wardrobe selector has a separate create-button column; active navigation no longer has a doubled border, while keyboard focus remains visible.
+
+Added E2E control-width/selector-navigation separation assertions. Desktop/mobile Playwright 4/4 passed; web TypeScript/build, ESLint, and `git diff --check` passed. Generated/reviewed 16 screenshots in ignored `investigation/tmp/ui-daisyui/`: aligned fields, no doubled active-menu border, no mobile horizontal overflow. Detail screenshots use mocked test data with unavailable images; this is not a layout or production-image error.
+
+After updated `docs/ui-regressions.png` feedback, replaced wardrobe selection with a custom arrows/Escape/Enter menu that closes when focus leaves, isolating the create button’s styles. Entire garment cards now navigate to details while favorites remain separate actions. Sorting has a consistent field appearance, navigation focus is not clipped, and saved-outfit deletion has clear spacing from missing-item responses. Desktop/mobile Playwright 2/2 passed; menu/catalog/saved screenshots reviewed again. TypeScript, ESLint, and formatting pass.
+
+At the user’s request, refined catalog sorting: replaced filter icon with a sorting icon, added “Sort”, and integrated the selected ordering into one lightweight bordered control. Desktop/mobile E2E 2/2 passed; catalog screenshots reviewed.
+
+## 2026-11-12 — monorepo quality system
+
+Configured ESLint 10 flat config with typed linting, strict shared/API/web/worker TypeScript, React Hooks, Prettier, Vitest/React Testing Library, dependency-cruiser cycles/boundaries, explicit Knip baseline, Husky/lint-staged, and GitHub Actions. `pnpm check` runs formatting, lint, typecheck, tests, dependencies, and builds. Baselines retain existing debt without automatically fixing it or deleting reported files.
+
+Verification: pnpm 12.18.0 frozen install; `pnpm check` passed. Vitest 29 files/145 tests; all-package typecheck/builds; 110 modules/261 dependencies, 13 known cycles, zero new boundary violations; Knip 33 existing/0 new; Prettier 11 existing/0 new; ESLint 686 existing/0 new. Existing 799 kB web-bundle warning remains. `core.hooksPath=.husky/_` hook active. No application logic, data, or Supabase changes.
+
+## 2026-11-12 — editor and survey refactoring
+
+Extracted standard inline editors, custom fields, and management modules; survey now has a question component. Added multi-select/skip test and safer amount/list editing. Full Vitest 31 files/151 tests; all-package typecheck; mocked desktop/mobile Playwright 10 PASS/2 safe skips; ESLint 646 (0 new, 40 fewer than 686); dependency graph clean; Knip 32 baseline, Prettier 11 existing. Web build/restart passed with the approximately 802 kB warning. Overall refactoring ongoing, no commits.
+
+Continuation: extracted inline-edit coordinator into its own hook/context; detail statuses/async actions use explicit guards. Custom-property API now separates validation, definitions/options, and values with Zod validation of database results. Final checks: Vitest 151/151, mock Playwright 10 passed/2 skips, four-workspace typecheck, graph 0 violations (162/541), ESLint 631 (0 new), Knip 32 baseline. Only API/web rebuilt/restarted; both healthy, HTTP 200.
+
+Extracted image rotation into `use-garment-rotation.ts` (preview, debounce, serialization, retries, processing state). Verification: 151 Vitest PASS, four-workspace typecheck, 10 mock E2E PASS/2 skips, graph 0 violations (163 modules/546 edges), ESLint 631/0 new. Web built/restarted; API/web healthy.
+
+Shared style profile split into schemas/constraints and survey content/labels with public imports preserved. A static 30-key tuple is tested against schema/questions. Verification: Vitest 151/151, four-workspace typecheck, graph 0 violations (165/549), ESLint 627/0 new. Shared changes require rebuilding web/API/worker.
+
+After shared rebuild, `web`, `api`, and `worker` containers are healthy; API health returns 200; full mock Playwright 10 passed/2 skips. No migrations/data changes.
+
+## Monorepo directory reorganization — 2026-11-12
+
+- Web source moved into `app/`, `components/`, `features/`, `lib/`, `styles/`; domain modules no longer sit flat in `src/`.
+- Grouped Fastify into `app/`, `modules/<domain>/` and `lib/`; retained the `apps/api/src/index.ts` entry point.
+- Worker grouped into `app/`, `jobs/`, `pipelines/`, `integrations/`; `apps/worker/src/index.ts` remains a compatible entry point.
+- Imports, tests, and Knip baseline updated for new paths; `scripts/check-src-layout.mjs` added to `pnpm check`.
+- API/web/worker TypeScript and Vitest 151/151 pass; dependency-cruiser finds no cycles. Playwright 10 passed/2 safely skipped write flows; complete local-binary verification passes against existing lint/Knip/Prettier baselines.
+- `pnpm` was unavailable on the host; checks used local binaries from `node_modules`.
+
+- Migrator paths in Compose/generator were also updated; API/worker entry points stayed compatible.
+
+- Final state: `docker compose config --quiet` valid; only `web`, `api`, `worker` recreated; all services healthy and `/api/health` returns `ok`. No worker errors after restart. `git diff --check` clean.
+
+# EN/PL internationalization
+
+- Added i18next/react-i18next, English default, and Polish selection in Settings; choice persists in localStorage and updates `html lang`.
+- Added shared `common`, `navigation`, `validation` resources and 11 feature-local resource pairs. Completeness checks are included in `pnpm check`.
+- Pages, forms, navigation, catalog, garments, uploads, analysis, outfits, survey, family, laundry, and settings use translations. Dates/custom monetary values follow the active language.
+- Added tests/E2E for default language, switching, localStorage, `html lang`, interpolation/plurals, and preservation of entered text.
+- Limitation at this stage: Gemini prose and verbatim care-label OCR are source data. Prompts/API contracts were unchanged; generated-language handling remained separate work.
+
+## 2026-11-14 — Travel Packing
+
+Added separate `/travel-packing` navigation page, RHF/Zod form with optional date, generation through existing Gemini queue/worker, and named-list save/reopen. Existing outfit generator/prompts preserved. New prompt separates typical climate from forecasts and assumes no season without a date. AI output is validated; the application assigns item IDs and sends no wardrobe/photos to the model.
+
+Garment matching reads real wardrobe metadata through user token/RLS. Checklist separates required/assigned/missing/packed quantities and supports quantity edits, partial packing, checkboxes, custom rows, deletion, intentional garment reuse, and progress. Editing does not call AI. Added complete EN/PL, job states, cancellation/retry, empty wardrobe, and no-match states.
+
+Migration `0025_travel_packing.sql` adds lists with owner/membership RLS, assignment validation, and a narrow task-creation function. Tested with two users in a temporary schema-only database, automatically removed afterward. Garment deletion preserves lists/progress. Migration was not applied to the existing application database; running containers were not rebuilt/restarted at that stage.
+
+Verification: full `pnpm check` PASS, 36 files/175 Vitest tests, all-package typechecks, no new ESLint/dependency/layout/i18n/Knip findings, all builds. Travel Packing E2E 4/4 PASS (desktop/mobile × EN/PL), Gemini/HTTP mocked without application writes. Scenario covers Japan/10 days, assignment, partial packing, save/reload, and one generation call. API tests cover sessions/CSRF; SQL tests verify read/delete isolation and foreign-garment rejection. Existing bundle warning remains. Documentation: `docs/travel-packing.md`, `docs/ARCHITECTURE.md`, `AGENTS.md`. No commits/baseline changes.
+
+### Travel Packing deployment — 2026-11-14
+
+After approval, rebuilt `migrate`, `api`, `worker`, `web`. Standard checksum migrator applied only `0025_travel_packing.sql` (SHA-256 `bc15490e0be1d545128c677ae8e5f768a5bab088097ecc68846125aa1b84f296`). Recreated only API/worker/web; all services healthy, `/api/health` 200, anonymous `/api/travel-packing` 401, `/travel-packing` served, `packing_lists` RLS active. Existing garment count (92) and saved-outfit count (8) unchanged before/after. No real Gemini calls or commits.
+
+E2E against deployed web (`http://localhost:8080`): 4/4 PASS (EN/PL, desktop/mobile). API/Gemini mocked, with no application writes or quota use. Documentation formatting and `git diff --check` pass.
+
+## 2026-11-14 — Travel Packing completeness
+
+Traced form, API contracts, Gemini transport, worker, validation, normalization, persistence, and UI. Missing deterministic baseline/semantic checks caused incomplete lists: structurally valid JSON containing one item or a generic underwear row passed validation. API/UI did not truncate rows; the 80-row cap and lack of an explicit token budget did not guarantee completeness.
+
+Added typed 13-group/item catalog in `packages/shared/src/travel-packing/catalog.ts`, quantity rules in `rules.ts`, a pre-Gemini baseline, and post-response merging/repair. AI proposes justified adjustments/additions rather than replacing the baseline. Validation removes generic bundles, merges duplicates, restores correct types/names, and protects daily-clothing minima. Provider/validation failure yields a labelled baseline without additional AI loops; explicit cancellation remains cancellation. Existing limiter/retry/queue reused. Travel Packing output budget: 8192 tokens. Outfit prompts unchanged.
+
+Matching requires a specific garment type; no match does not imply non-ownership. EN/PL UI groups independent checkboxes and separates required/packed labels from names. Optional metadata stays in existing JSON, without migrations or rewriting saved lists. Japan/November/10 days/no laundry baseline: 30 separate items including 12 underpants, 8 short/4 long socks, 7 T-shirts, 2 optional shirts, 3 trousers, 2 sweatshirts, 1 optional sweater, 2 sleepwear sets, and individual toiletries. Full table/limits: `docs/travel-packing.md`; reproducible JSON in ignored `investigation/reports/travel-packing-completeness/japan-10-days.json`.
+
+Verification: `pnpm check` PASS — 37 files/191 tests, all builds/typechecks, no new lint findings, graph 234 modules/738 dependencies clean, complete i18n/Knip. Vite E2E 6/6 PASS (EN/PL, desktop/mobile, complete fallback, groups, no overflow, save/reload progress); mobile screenshot reviewed. Gemini mocked.
+
+Rebuilt/deployed only API/worker/web; all healthy, `/api/health` 200, anonymous lists 401. Existing saved list (one row) has identical pre/post fingerprint `e960a8693e9ae949ae332b1508f55d34`. Latest migration remains `0025_travel_packing.sql`. No reset, data migration, or commits.
+
+Post-deployment E2E against `http://localhost:8080`: 6/6 PASS with API/Gemini mocks and no user-data writes. Documentation formatting and `git diff --check` pass.
+
+## 2026-11-14 — saved-list read error and Travel Packing appearance
+
+Diagnosed page-open 500 against a real row: strict `packingListSchema` rejected Supabase `user_id` and `wardrobe_id` columns returned by `select('*')` and saves. Response schema now strips extra database columns while save requests stay strict. Earlier mocks omitted these columns. Added contract regression and GET/PUT tests with stubbed sessions and real Supabase client over mocked transport; full-row reads/writes return 200. Also validated the existing row with deployed API schema without exposing content or writing it.
+
+Replaced “Saved lists” heading with a working counted tab, saved-trip cards, continue action, progress, and retry after load failure. Form/heading reuse outfit-generator PageHeading, Button, panels, responsive layout, and spacing. Planning/saved/edit views are separate; “New trip” opens an empty form. All new text has EN/PL. Reviewed desktop/mobile planner and saved-list screenshots.
+
+Verification: `pnpm check` PASS, 37 files/193 tests; no new lint/graph/layout/i18n/Knip findings, all builds/typechecks. Vite E2E 6/6 PASS with complete database fields and tab switching. API/worker/web rebuilt/deployed, all healthy. Saved list fingerprint unchanged (`e960a8693e9ae949ae332b1508f55d34`). No migrations/commits.
+
+Post-deployment E2E against `http://localhost:8080`: 6/6 PASS (EN/PL, desktop/mobile), API/Gemini mocks, no user database writes. Documentation formatting and `git diff --check` pass.
+
+## 2026-11-14 — Remember me and persistent sign-in
+
+Added default-checked, accessible “Remember me” with EN/PL and lifetime explanation. Optional login `rememberMe` stays in BFF; Supabase still receives only email/password. Checked gives a 30-day HttpOnly cookie, renewed on authenticated activity when fewer than 29 days remain. Unchecked gives a browser-session cookie with a 12-hour server record. Choice lives in encrypted `private.sessions.tokens` payload and survives token rotation. Old payloads without the flag remain compatible/persistent, without migration or rewriting records.
+
+Audit found the existing cookie already lasted 30 days, but transient refresh/user-lookup errors were mapped to 401 and cleared it. Transient 429/5xx/unavailable errors now return 503 and preserve sessions. Definitively rejected/expired sessions still require sign-in; logout removes row/cookie. Supabase’s one-hour JWT remains unchanged, refreshed automatically under a PostgreSQL row lock. Tokens do not enter localStorage or API responses.
+
+Verification: `pnpm check` PASS — 38 files/205 tests, including 12 new session tests for both cookie modes, encryption, renewal, rotation, transient-error preservation, old payloads, expiration, and logout. API-local Vitest enabled. No new lint/i18n/graph/layout/Knip findings; all workspace typechecks/builds pass. Mocked remember-true/false desktop/mobile form E2E 4/4 PASS against Vite; mobile screenshot reviewed. No real credentials/accounts used or changed.
+
+Rebuilt/deployed API/web. All services healthy, API health 200; active session-row count stayed 12. Existing sessions were not revoked; no migrations/commits. Details: `docs/auth-sessions.md`.
+
+Post-deployment E2E against `http://localhost:8080`: 4/4 PASS (both Remember me choices, desktop/mobile). Documentation formatting and `git diff --check` pass.
+
+## 2026-11-14 — demonstracja Playwright READ-ONLY
+
+Audited explicit/automatic writes, AI jobs, and session refresh. Recorded in a fresh browser context using an isolated local preview of account data read in RLS-protected READ ONLY transactions. All API requests intercepted locally; generators labelled as examples without Gemini. MP4/WebM, report, and endpoint policy remain in private ignored `investigation/reports/readonly-demo/`. No data/photos published.
+
+Before/after identifiers and field fingerprints confirmed identical account, wardrobe, favorites, outfits, packing lists, assignments, packing status, preferences, and sessions. No backend API calls, account writes, migrations, or restore mechanism. Saved data unchanged. Verified forbidden POST blocking, MP4 validity with ffprobe, and control frames. Application/configuration unchanged; no commits.
+
+## 2026-11-15 — outfit generator additional requirements layout
+
+Moved optional additional requirements into a full-width row below temperature/weather/count. Three primary controls retain equal 45 px heights. Multiline notes have dedicated space and bounded vertical resizing; generate/cancel actions sit below, right-aligned on desktop and full-width on mobile. Validation, 500-character cap, and generation behavior unchanged.
+
+Verification: web typecheck and full `pnpm check` PASS (205 tests); local Playwright geometry/overflow checks and screenshots on desktop/mobile. API fully mocked; no Gemini/account writes. Rebuilt/deployed only web. No migrations/commits.
+
+## 2026-11-15 — remove garment-addition section from outfits
+
+Removed the initial “Time for a good combination” card and single/bulk add actions from `/outfits`. View starts with the generator; results/no-match state appear after generation. Preserved empty saved-outfit and generated missing-item messages. Removed unused AddButton import.
+
+Verification: web typecheck, `pnpm check` PASS (205 tests), Playwright confirms removed section and correct desktop/mobile layout. Mocked API, no account/Gemini access. Only web rebuilt/deployed. No migrations/data changes/commits.
+
+## 2026-11-15 — shared full page width
+
+Removed the style profile/survey 1040 px cap and outfit/trip-planner panel 1180 px cap. Views now use full shared `.main-content` width like Overview, preserving margins/responsiveness. Only existing CSS rules changed.
+
+Playwright compared widths/left edges of Overview, My style, survey, Outfits, and Travel Packing at 1920/1440/390 px: all 15 comparisons PASS without horizontal overflow. Reviewed wide Travel Packing screenshot. API mocked without account operations. `pnpm check` PASS (205 tests). Only web rebuilt/deployed; no migrations/commits.
+
+## 2026-11-15 — style survey 2.0 and shared style profile
+
+Preserved q01–q30 and JSON version 1; added only four optional fields:
+dominant style, specific colors, everyday formality, and independent strengths
+for style/color/fit preferences. The survey has 34 questions in seven logical
+steps, dominant-style cards, color swatches, and a formality scale. Old
+local progress maps to new steps without resetting answers. The profile
+shows separate 30-question base progress and a four-question extension; dashboard does not
+mark an old completed profile incomplete because new questions exist.
+
+Added deterministic `StyleProfileSummary` separating preferences,
+restrictions, context, and recommendations. Missing answers are not guessed,
+and `false` remains distinct from unanswered. Conflicting preferences
+yield to restrictions while original answers remain saved. “My style”
+shows a large style card, supporting influences, concrete colors, characteristics,
+contextual rules, and restrictions; full answers are expandable. Gemini
+receives the same interpretation, while shared validation/ranking rejects recognized
+hard-rule violations and orders valid alternatives by soft preferences.
+Expanded EN/PL and disambiguated reused option identifiers
+(for example, office formality versus formal footwear).
+
+Verification: `pnpm check` (223/223 Vitest tests, 41 files; types, builds,
+15 i18n pairs, module boundaries, layout, and baseline without new violations),
+Playwright 8/8 (EN/PL desktop/mobile, save and reopen, legacy profile
+30/30 without PATCH, complete profile with 34 answers). Screenshots in ignored
+`investigation/tmp/ui-daisyui/`. Real RPC and two-user RLS verification
+ran in a temporary schema-only database, without copying account data;
+confirmed additive writes, preserved old fields, `false`, and skips. The
+test database was removed. No migrations or write tests ran against
+the existing account; Gemini was not called. Existing warnings remain for
+Vite bundle size, daisyUI CSS, and Fastify deprecation. Audit, questions,
+interpretation, and limitations are documented in `docs/style-profile.md`.
+
+## 2026-11-15 — style survey 2.0 in the running stack
+
+Reports of `sections.aesthetics`, the old counter, and missing colors were caused by
+old web/API/worker images remaining in Compose after the earlier
+implementation was tested on Vite. Container inspection confirmed
+missing q32_colors and shared profile interpretation. Built current images and
+replaced only those three services with `up --no-deps --no-build`, without
+running the migrator, changing account data, or altering volumes. All three
+services are healthy; file inspection confirmed new fields and interpretation.
+
+The main counter now includes all 34 questions (for example 30/34),
+alongside the preserved original-survey counter of 30/30,
+with a separate optional extension counter of 0/4. Translated the legacy aesthetics section key and added
+“Answer the new questions” to open step one without losing
+saved progress or answers. “Favourite colours” points to survey step two
+when no specific swatches are selected. It does not infer
+new answers from old broad palettes.
+
+Verification: `pnpm check` passed (225/225 Vitest, 41 files, no new
+baseline findings); deployed `localhost:8080` Playwright passed
+8/8 (desktop/mobile, EN/PL, new fields, colors, 30/34 count, and old-progress
+transition to new questions). All Playwright API requests were intercepted
+by isolated in-memory fixtures; the existing account was not edited. In an old
+tab/PWA, select “Refresh application” when the new-version notice
+appears; browser data need not be cleared. No migrations or commits.
+
+## 2026-11-15 — spacing between answer sections
+
+Added 12 px top margins to section cards in the expanded full profile
+(“Your style and aesthetics”, “Colours and patterns”, etc.). Spacing does not depend on
+`gap` support in native `details`. Answer content and state were preserved.
+Existing Playwright also captures the expanded section list
+on desktop and mobile (`profile2-answer-sections`). The change affects only
+presentation, with no migrations or account-data operations.
+
+Verification: `pnpm check` passed (225 tests); two deployed-site Playwright scenarios
+confirmed desktop/mobile presentation. Released the change
+by replacing only web. Tests used in-memory fixtures.
+
+## 2026-11-15 — global repeatable code-style cleanup
+
+At the user’s explicit request, existing import and blank-line rules
+were extended across the monorepo. Added shared `eslint.style.config.js` for
+full ESLint and style commands, reusing existing tooling:
+Prettier, `eslint-plugin-simple-import-sort`, and the native
+`padding-line-between-statements` rule, without dependency installation. Prettier explicitly
+sets semicolons, single quotes, trailingComma all, width 100,
+two-space indentation, bracketSpacing, arrowParens always, and LF.
+
+`pnpm style:fix` runs Prettier, stylistic-only ESLint `--fix`,
+Prettier again, and strict `style:check`. `pnpm check` now starts with
+`style:check` without tolerating a stylistic baseline. Exclusions cover builds,
+dependencies, private data/experiments, vendored Supabase, the lockfile,
+immutable migrations, model metadata and generated reports. Existing baselines
+were not increased. Ordinary tasks still use local formatting;
+AGENTS.md and CODE_QUALITY.md describe the standard and automation limits.
+
+Automatically formatted **204 files** out of 309 inputs.
+Comparison against the saved starting state confirmed preservation of ASTs in 221
+JS/TS/JSX/TSX files, allowing import ordering, plus contents of 47 JSON
+and three YAML files. Four files containing side effect imports preserved
+their complete import order. A second full `style:fix` changed **0 files**,
+verified by SHA-256. Earlier user changes were not reverted.
+
+Verification: `style:check` PASS; `pnpm check` PASS, **231/231 Vitest across 42
+files**, all workspace types/builds, i18n, layout and dependency-cruiser
+and Knip without new violations. Typed ESLint retained 603 existing
+diagnostics (0 new); no logic fixes or assertions were used to
+hide them. Added six tooling tests covering imports, spacing, exported
+functions, side effects, repeatability/JSX/CJS, disable comments,
+and exclusions. The separate configuration recognizes existing TypeScript disable comments
+without activating those rules or removing comments as
+apparently unused.
+
+Additional Playwright ran against a local preview of the new build, with API entirely in
+RAM: **18 PASS / 4 FAIL**. Two existing scenarios (garment details and
+Gemini settings, each on desktop/mobile) expect Polish labels without
+selecting Polish, although the default is EN. The same selectors
+and missing language setup were confirmed in the pre-format snapshot.
+Application functionality and test logic were not changed for styling.
+No live account-writing E2E, Gemini calls, migrations, or resets ran;
+user data/running services were unchanged. Preview was stopped.
+
+## 2026-11-15 — English-first source and practical development guide
+
+Translated authored documentation and technical API/worker/script diagnostics into English while preserving Polish UI resources, localization fixtures, multilingual garment vocabularies, user content and checksum-protected SQL. Added stable additive API error codes, localized frontend error mapping, explicit outfit content-language propagation and shared packing locale resources. The existing i18next instance remains the only application instance. PWA metadata and offline fallback default to English, with a separate Polish static fallback.
+
+Added `pnpm language:check` to the quality gate: a lightweight heuristic scans authored prose, with reviewed localization exceptions and explicit SHA-256 exceptions for existing migrations. It reports locations without printing potentially private content. Extended i18n parity checking to the shared packing resources. Pre-commit lint-staged explicitly disables stashing and partial-file hiding. No quality baselines were increased.
+
+README now links a five-file `docs/development/` guide: current feature/API/storage/test map; source layout and data-flow diagram; frontend/API recipes; immutable SQL/RLS workflow; worker/Gemini integration; i18n; commands/environment; isolated testing; backup/deployment/troubleshooting; and a proposed wardrobe-reminder feature with a checklist. The example is documentation only. Verified 78 distinct referenced repository paths (excluding explicitly proposed/example filenames), package scripts/configuration and 94 relative Markdown links/anchors. Documented gaps include handwritten database contracts, no automatic rollback, no universal host-mode environment loader, incomplete OpenAPI response coverage, and remaining isolated live-stack test harness work.
+
+Verification: full `pnpm check` passed, including 236 Vitest tests across 43 files, all workspace types/builds, 16 locale pairs, dependency boundaries, layout, language check and unchanged legacy lint/Knip allowances. All 22 selected mocked Playwright scenarios passed across the main and focused reruns, covering auth, garment details, settings, old/new style profiles and Travel Packing in desktop/mobile EN/PL; outdated assumptions about the default language and localized errors were corrected. Tests use in-memory browser fixtures and mocked Gemini; no migrations, real-account writes, paid AI calls or deployment were performed for this milestone. Existing Fastify deprecation and web bundle-size warnings remain.

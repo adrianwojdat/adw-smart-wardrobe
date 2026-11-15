@@ -21,12 +21,12 @@ runtime. It is a **verbatim mirror**: the file is byte-for-byte the `u2netp.onnx
 asset published by the [rembg](https://github.com/danielgatis/rembg) project, and
 its SHA-256 is pinned by the consumer.
 
-| | |
-| --- | --- |
-| File | `u2netp.onnx` |
-| Size | 4,574,861 bytes (4.36 MiB) |
+|         |                                                                    |
+| ------- | ------------------------------------------------------------------ |
+| File    | `u2netp.onnx`                                                      |
+| Size    | 4,574,861 bytes (4.36 MiB)                                         |
 | SHA-256 | `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8` |
-| Opset | 11 |
+| Opset   | 11                                                                 |
 
 ## Tensor contract
 

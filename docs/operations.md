@@ -1,14 +1,14 @@
-# Eksploatacja i kopie zapasowe
+# Operations and backups
 
-## Co zachować
+## What to preserve
 
-PostgreSQL (wszystkie bazy, role, auth, storage metadata i schemat private), `data/storage/` **wraz z atrybutami xattr**, `db-config` (klucze pgsodium), `.env`, wersję repozytorium i lockfile. `caddy-data` zawiera certyfikaty. Redis używa AOF w `redis-data`; stan biznesowy zadań jest również w PostgreSQL. Sama kopia SQL nie zawiera zdjęć, a kopia samych bajtów zdjęć nie zawiera ich metadanych HTTP. Stare wolumeny Docker Desktop są zachowane jako punkt odzyskiwania; aktywne PostgreSQL i Redis działają w OrbStack, zdjęcia w katalogu projektu.
+PostgreSQL (all databases, roles, auth, storage metadata, and private schema), `data/storage/` **with xattrs**, `db-config` (pgsodium keys), `.env`, repository revision, and lockfile. `caddy-data` stores certificates. Redis uses AOF in `redis-data`; business job state also lives in PostgreSQL. SQL alone contains no photos, and image bytes alone omit HTTP metadata. Old Docker Desktop volumes remain as a recovery point; active PostgreSQL/Redis run in OrbStack, while photos live in the project directory.
 
-Na macOS używamy OrbStack i niezmodyfikowanego oficjalnego Storage z natywnymi xattr: [infra/storage/README.md](../infra/storage/README.md). Dawny katalog JSON `data/storage-metadata/` oraz nieaktywną kopię zdjęć usunięto na żądanie użytkownika; pozostały w niezależnych archiwach backupu w `investigation/backups/`. Nie edytuj plików zdjęć ani atrybutów ręcznie. Supabase zachowuje strukturę ścieżek i identyfikatory wersji, więc plik obrazu może mieć nazwę UUID bez rozszerzenia.
+On macOS, OrbStack runs unmodified official Storage with native xattrs: [infra/storage/README.md](../infra/storage/README.md). The former `data/storage-metadata/` JSON catalog and inactive image copy were deleted at the user’s request; independent backup archives remain in `investigation/backups/`. Never edit photo files or attributes manually. Supabase retains paths/version IDs, so image files may have extensionless UUID names.
 
-## Spójna kopia
+## Consistent backups
 
-Najprostsza procedura dla małej instalacji to krótka przerwa serwisowa: zatrzymaj `web api worker auth storage realtime supavisor functions studio meta rest api-gw`, pozostaw `db redis imgproxy` (imgproxy tylko odczytuje pliki). W tym czasie użytkownicy nie zapisują danych.
+For small installations, the simplest procedure is a short maintenance window: stop `web api worker auth storage realtime supavisor functions studio meta rest api-gw` while leaving `db redis imgproxy` running (imgproxy only reads files). Users must not write during this window.
 
 ```sh
 umask 077
@@ -16,34 +16,34 @@ wardrobe_backup_dir="investigation/backups/operations-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$wardrobe_backup_dir"
 docker compose stop web api worker auth storage realtime supavisor functions studio meta rest api-gw
 docker compose exec -T db pg_dumpall -U supabase_admin > "$wardrobe_backup_dir/cluster.sql"
-# Hostowy tar: BSD tar na macOS lub GNU tar na Linuxie, z obsługą xattr.
+# Host tar: BSD tar on macOS or GNU tar on Linux, with xattr support.
 tar --xattrs -C data -cf "$wardrobe_backup_dir/storage.tar" storage
 docker compose exec -T db tar -C /etc/postgresql-custom -cf - . > "$wardrobe_backup_dir/db-config.tar"
 docker compose up -d
 ```
 
-Polecenie `pg_dumpall` obejmuje role i wrażliwe dane Auth; plik musi być zaszyfrowany i dostępny tylko administratorowi. Kopię `.env` wykonaj osobno do zaszyfrowanego magazynu. Nie dodawaj backupów do Git. Skopiuj backup poza host i sprawdź sumy SHA-256. Możesz też stosować sprawdzone kopie fizyczne PostgreSQL z WAL/PITR, ale konfiguracja PITR nie jest częścią MVP.
+`pg_dumpall` includes roles and sensitive Auth data; encrypt the file and restrict access to administrators. Back up `.env` separately to encrypted storage. Never add backups to Git. Copy them off-host and verify SHA-256 checksums. Verified PostgreSQL physical backups with WAL/PITR are also possible, but PITR configuration is outside the MVP.
 
-Przy odtwarzaniu archiwum zdjęć użyj również `tar --xattrs`. Round-trip hostowego BSD tar na tym Macu został sprawdzony na izolowanym pliku z atrybutami Supabase. Przy przenoszeniu archiwum macOS ↔ Linux osobno sprawdź zgodność zapisu xattr narzędzi obu systemów; nie wystarczy porównać SHA256 zdjęć. BusyBox tar z obrazu Storage nie zastępuje hostowego narzędzia w tym poleceniu.
+Use `tar --xattrs` when restoring image archives too. Host BSD tar round-tripping was tested on an isolated file with Supabase attributes on this Mac. For macOS/Linux transfers, separately verify xattr compatibility between tools; comparing photo SHA256 alone is insufficient. BusyBox tar in the Storage image is not a replacement for the host tool used here.
 
-Nie kopiuj na żywo surowego PGDATA przez `tar`; użyj logicznego dumpu lub poprawnego backupu PostgreSQL. Snapshot Proxmox bez quiesce nie zastępuje regularnie testowanej kopii aplikacyjnej.
+Never copy live raw PGDATA with `tar`; use a logical dump or correct PostgreSQL backup. A Proxmox snapshot without quiescing does not replace regularly tested application backups.
 
-## Odtwarzanie — zawsze najpierw próba
+## Recovery — always rehearse first
 
-1. Przygotuj odizolowany LXC/VM z tą samą wersją obrazów i kopią repozytorium. Nie kieruj na niego domeny produkcyjnej i zablokuj SMTP podczas próby.
-2. Użyj zachowanych sekretów. Odtwórz klucze `db-config` w odpowiednim wolumenie oraz `data/storage/` razem z xattr. Historyczne backupy wykonane podczas używania adaptera JSON wymagają odtworzenia zapisanych w nich wartości jako natywnych xattr; samo skopiowanie tamtych zdjęć nie wystarcza.
-3. Uruchom samo PostgreSQL. Domyślna inicjalizacja Supabase tworzy role/systemowe bazy; pełny dump klastra może zawierać te same role/bazy. Administrator powinien przygotować kontrolowany restore zgodnie z wersją PostgreSQL i sprawdzić każdy konflikt, zamiast ignorować błędy lub wykonywać dump na produkcji. Dla rutynowej eksploatacji przygotuj i zweryfikuj runbook restore dostosowany do wybranego sposobu backupu.
-4. Po przywróceniu SQL uruchom Auth/Storage i pozostały stos. Migrator porówna checksumy; nie powinien ponownie wykonywać już zapisanych migracji.
-5. Sprawdź logowanie istniejącego użytkownika, listę garderób, odczyt kilku zdjęć i polityki dostępu drugiego użytkownika. Sprawdź losowe zdjęcia po nazwach obiektów, nie tylko liczbę rekordów.
-6. Dopiero po udanej próbie i udokumentowanym czasie odtwarzania stosuj procedurę awaryjną na właściwym hoście. Pełny restore nie został automatycznie przetestowany przez ten projekt; wykonaj go przed traktowaniem kopii jako sprawdzonej.
+1. Prepare an isolated LXC/VM with matching image versions and repository copy. Do not point the production domain at it; block SMTP during rehearsal.
+2. Use preserved secrets. Restore `db-config` keys in their proper volume and `data/storage/` with xattrs. Historical backups made with the JSON adapter require converting recorded attributes back to native xattrs; copying those old image bytes alone is insufficient.
+3. Start PostgreSQL alone. Supabase initialization creates system roles/databases that may also be present in a full cluster dump. The administrator must perform a controlled, version-appropriate restore and review every conflict, rather than ignore errors or run the dump against production. Prepare and verify a restore runbook matching the chosen backup method.
+4. After restoring SQL, start Auth/Storage and the remaining stack. Migrator compares checksums and must not rerun recorded migrations.
+5. Verify an existing user’s sign-in, wardrobe listing, several images, and a second user’s access restrictions. Sample photos by object name rather than checking only row counts.
+6. Use the emergency procedure on the real host only after a successful rehearsal and documented recovery time. This project has not automatically tested a full restore; do so before treating a backup as verified.
 
-Redis można odtworzyć z AOF przy zatrzymanej usłudze. Jeżeli Redis zostanie utracony, worker odtworzy queued/stale processing jobs z SQL. Completed jobs nie są uruchamiane ponownie; failed wymagają ręcznego retry. Nie usuwaj całego wolumenu PostgreSQL lub Storage przy diagnostyce kolejki.
+Redis can be restored from AOF while stopped. If Redis is lost, worker recreates queued/stale-processing jobs from SQL. Completed jobs do not rerun; failed jobs need manual retry. Never delete whole PostgreSQL/Storage volumes while diagnosing queues.
 
-## Aktualizacje i migracje
+## Updates and migrations
 
-Wykonaj backup i przetestuj aktualizację na kopii. Zapisz obecny commit i wersje obrazów. Uruchom `docker compose up -d --build`. Migrator startuje po gotowości Auth i Storage, bierze blokadę advisory, wykonuje każdą nową migrację w transakcji i zapisuje SHA-256. Awaria migracji blokuje start BFF/worker. Istniejące pliki migracji są niezmienne — naprawy dopisuj w nowym pliku. Aktualizacje major PostgreSQL wymagają osobnej procedury upstream, nie zwykłej zamiany tagu obrazu.
+Back up and rehearse updates on a copy. Record the current commit and image versions. Run `docker compose up -d --build`. Migrator starts after Auth/Storage readiness, takes an advisory lock, executes each new migration transactionally, and records SHA-256. Migration failure blocks BFF/worker startup. Existing migrations are immutable: append fixes in new files. PostgreSQL major upgrades need a separate upstream procedure, not a simple image-tag replacement.
 
-Nie uruchamiaj `docker compose down -v` dla istniejącej instalacji. `docker compose down` bez `-v` zachowuje dane. Rollback kodu nie oznacza rollbacku schematu — używaj kompatybilnych migracji albo odtwórz zweryfikowaną kopię.
+Do not run `docker compose down -v` on an existing installation. `docker compose down` without `-v` preserves data. Code rollback does not roll back schemas: use compatible migrations or restore a verified backup.
 
 ## Monitoring
 
@@ -55,15 +55,15 @@ docker compose stats --no-stream
 docker system df
 ```
 
-Logi rotują do 3 × 10 MB na usługi upstream. API/worker używają Pino, nie logują ciasteczek ani haseł. Włącz zewnętrzny alert na `/api/health` i miejsce na dysku; monitoring/alerting nie jest osobną usługą MVP. `/api/health` sprawdza bazę sesji, nie pełną poprawność wszystkich usług; Compose healthchecks sprawdzają pozostałe komponenty.
+Upstream service logs rotate at 3 × 10 MB. API/worker use Pino and do not log cookies/passwords. Set external alerts for `/api/health` and disk space; monitoring/alerting is not a separate MVP service. `/api/health` checks the session database, not all service correctness; Compose healthchecks cover other components.
 
-## Typowe problemy
+## Common problems
 
-- **403 podczas zapisu:** publiczny URL nie zgadza się z APP_ORIGIN, brak CSRF, brak roli editor/owner lub wygasłe członkostwo.
-- **Nie można się zalogować:** sprawdź gotowość Auth, potwierdzenie email i zgodność JWT_SECRET/ANON_KEY. Nie generuj nowego .env na istniejących wolumenach.
-- **Email nie dociera:** sprawdź SMTP i dozwolone redirect URL. Samo ustawienie zmiennych nie dowodzi dostarczenia.
-- **Zdjęcie odrzucone:** maks. 10 MB, 40 MP, JPEG/PNG/WebP; SVG/HEIC/GIF nie są wspierane w MVP.
-- **Zadanie utknęło:** sprawdź worker, Redis i `jobs`. Worker odtwarza outbox co 5 s; stale processing po 5 min. Ręczne ponowienie jest tylko dla failed i wymaga uprawnień edycji.
-- **Studio/Edge Runtime zajmują RAM:** nie usuwaj przypadkowych zależności. Aktualny pełny baseline jest celowy. Obserwuj RAM, ograniczenia i restart count.
-- **Deno nie startuje:** pierwszy start wymaga dostępu do JSR/npm i prawidłowego DNS. Cache Deno pozostaje w named volume.
-- **Brak dostępu po aktualizacji aplikacji:** odśwież przez powiadomienie o nowej wersji PWA. Prywatne API i zdjęcia nigdy nie powinny pochodzić z cache service workera.
+- **403 on writes:** public URL differs from APP_ORIGIN, CSRF is missing, editor/owner permission is missing, or membership expired.
+- **Cannot sign in:** check Auth readiness, email confirmation, and JWT_SECRET/ANON_KEY consistency. Never generate a new .env over existing volumes.
+- **Email not delivered:** inspect SMTP and permitted redirect URLs. Setting variables alone does not prove delivery.
+- **Image rejected:** at most 10 MB and 40 MP, JPEG/PNG/WebP; SVG/HEIC/GIF are unsupported in the MVP.
+- **Stuck job:** check worker, Redis, and `jobs`. Worker recovers the outbox every 5 seconds and stale processing after 5 minutes. Manual retry applies only to failed jobs and requires editing permission.
+- **Studio/Edge Runtime uses RAM:** do not remove arbitrary dependencies. The complete current baseline is intentional. Observe RAM, limits, and restart counts.
+- **Deno fails to start:** first launch needs JSR/npm access and working DNS. Deno cache persists in a named volume.
+- **Access broken after update:** refresh using the PWA update notification. Private APIs/photos must never be served from service worker cache.

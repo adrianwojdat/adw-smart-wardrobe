@@ -1,41 +1,41 @@
-# Wdrożenie na Proxmox LXC
+# Deployment on Proxmox LXC
 
-## Zasoby
+## Resources
 
-Zalecany punkt startowy dla pełnego stosu: **4 vCPU, 8 GB RAM i 40–60 GB SSD** plus miejsce na zdjęcia i kopie zapasowe. Intel N100/N150 wystarczy dla małej rodziny, ale budowanie obrazów może trwać dłużej. Nie zakładamy, że pełny Supabase będzie stabilny w 4 GB. 8 GB jest zaleceniem operacyjnym, nie wynikiem testu obciążeniowego N100; wyniki lokalnej weryfikacji są w `docs/progress.md`. Zachowano wszystkie usługi bazowego wydania Supabase.
+Suggested full-stack starting resources: **4 vCPUs, 8 GB RAM, and 40–60 GB SSD**, plus images/backups. Intel N100/N150 is adequate for a small family, although image builds can take longer. Do not assume full Supabase will be stable in 4 GB. The 8 GB recommendation is operational guidance, not an N100 load-test result; local verification results are in `docs/progress.md`. All baseline Supabase services are retained.
 
-Pojemność zdjęć zależy od ich liczby i zawartości; upload jest skalowany i kodowany do WebP, lecz nie obiecujemy stałego rozmiaru. Monitoruj wolumen Storage i wolne miejsce bazy. Budowanie obrazów wymaga dodatkowego miejsca na pnpm i warstwy Docker. Przechowuj kopie na innym dysku/hoście, nie w tym samym LXC.
+Image capacity depends on count/content; uploads are resized and encoded as WebP, without a fixed-size guarantee. Monitor Storage and database disk space. Image builds need extra space for pnpm and Docker layers. Keep backups on a separate disk/host, not in the same LXC.
 
-## Przygotowanie hosta
+## Host preparation
 
-1. Utwórz dedykowany, nieuprzywilejowany LXC Debian/Ubuntu z aktualizacjami bezpieczeństwa. Konfigurację Proxmox wykonuje administrator; repozytorium nie zmienia hosta.
-2. Dla Docker w LXC wymagane są funkcje nesting i keyctl. Sprawdź zgodność storage drivera, cgroups i AppArmor w swojej wersji Proxmox. Nie wyłączaj globalnie zabezpieczeń hosta. Jeżeli kontenery nie działają poprawnie w Twojej konfiguracji, użyj małej VM zamiast uprzywilejowanego LXC.
-3. Zainstaluj Docker Engine i Compose plugin zgodnie z dokumentacją Docker. `docker compose version` i `docker info` muszą działać. Nie jest potrzebny osobny Supabase CLI.
-4. Sklonuj repozytorium do trwałego katalogu. Do generowania sekretów wymagany jest Node 26 LTS; pnpm potrzebujesz tylko do developmentu/testów, obrazy budują zależności samodzielnie.
+1. Create a dedicated, unprivileged Debian/Ubuntu LXC with security updates. Proxmox configuration is the administrator’s responsibility; the repository does not modify the host.
+2. Docker in LXC needs nesting and keyctl. Check storage-driver, cgroup, and AppArmor compatibility for your Proxmox version. Do not disable host-wide security. If containers do not work correctly in your setup, use a small VM instead of privileged LXC.
+3. Install Docker Engine and the Compose plugin using Docker documentation. `docker compose version` and `docker info` must work. A separate Supabase CLI is not required.
+4. Clone the repository into a persistent directory. Secret generation requires Node 26 LTS; pnpm is only needed for development/tests because images install their own dependencies.
 
-## Pierwsze uruchomienie
+## First startup
 
 ```sh
 node scripts/setup.mjs
-# Edytuj .env, następnie:
+# Edit .env, then:
 docker compose up -d --build
 ```
 
-Skrypt tworzy `.env` z prawami 0600, kryptograficznie losowymi sekretami i zgodnymi HS256 anon/service-role JWT. Odmawia nadpisania istniejącego pliku. Zachowaj zaszyfrowaną kopię `.env`; utrata kluczy sesji/vault może uniemożliwić odczyt części danych. Nie zmieniaj `POSTGRES_PASSWORD` po inicjalizacji wolumenu bez procedury rotacji ról.
+The script creates `.env` with mode 0600, cryptographically random secrets, and matching HS256 anon/service-role JWTs. It refuses to overwrite an existing file. Keep an encrypted copy of `.env`; losing session/vault keys may make some data unreadable. Do not change `POSTGRES_PASSWORD` after volume initialization without a role-rotation procedure.
 
-Dla testów na tym samym komputerze domyślne `http://localhost:8080` jest wystarczające. Dla dostępu z LAN ustaw **dokładnie ten sam origin**, np. `http://192.168.1.50:8080`, w:
+For tests on the same computer, the default `http://localhost:8080` is sufficient. For LAN access, set **the exact same origin**, for example `http://192.168.1.50:8080`, in:
 
 - `APP_ORIGIN`
 - `SITE_URL`
 - `SUPABASE_PUBLIC_URL`
-- `API_EXTERNAL_URL` z dopiskiem `/api/auth`
-- `ADDITIONAL_REDIRECT_URLS` z dopiskiem `/reset-password`
+- `API_EXTERNAL_URL` with the suffix `/api/auth`
+- `ADDITIONAL_REDIRECT_URLS` with the suffix `/reset-password`
 
-Nie mieszaj localhost, nazwy DNS i adresu IP — kontrola Origin celowo odrzuca niespójne ustawienia.
+Do not mix localhost, DNS names, and IP addresses: Origin checks intentionally reject inconsistent settings.
 
 ## HTTPS
 
-Dla publicznie rozwiązywanej domeny z dostępnymi portami 80/443 ustaw:
+For a publicly resolving domain with ports 80/443 available, set:
 
 ```dotenv
 SITE_ADDRESS=wardrobe.example.com
@@ -49,15 +49,15 @@ ADDITIONAL_REDIRECT_URLS=https://wardrobe.example.com/reset-password
 COOKIE_SECURE=true
 ```
 
-Caddy uzyska certyfikat i utrwali go w `caddy-data`. W prywatnej sieci użyj istniejącego reverse proxy z zaufanym certyfikatem albo własnego CA; przeglądarki muszą ufać certyfikatowi, aby PWA działało poprawnie. Przy terminacji TLS poza Caddy zachowaj publiczny HTTPS origin, Secure cookies i przekazuj żądania do portu HTTP aplikacji przez zaufaną sieć. Nie publikuj portów PostgreSQL, Redis, Supavisor, Storage ani bramy Supabase.
+Caddy obtains a certificate and persists it in `caddy-data`. On a private network, use an existing reverse proxy with a trusted certificate or your own CA; browsers must trust the certificate for correct PWA behavior. When terminating TLS outside Caddy, retain the public HTTPS origin and Secure cookies, forwarding to the application HTTP port over a trusted network. Do not publish PostgreSQL, Redis, Supavisor, Storage, or Supabase gateway ports publicly.
 
 ## Email
 
-Domyślnie `ENABLE_EMAIL_AUTOCONFIRM=true`: konto lokalne powstaje bez wiadomości potwierdzającej. To ułatwienie pierwszego uruchomienia; adresy email nie są wtedy zweryfikowane. **Przed udostępnieniem rodzinnych zaproszeń niezaufanym osobom skonfiguruj SMTP i ustaw autoconfirm=false**, ponieważ zaproszenia są związane z tożsamością email.
+By default, `ENABLE_EMAIL_AUTOCONFIRM=true`: local accounts are created without confirmation emails. This simplifies first launch, but email addresses are unverified. **Configure SMTP and set autoconfirm=false before exposing family invitations to untrusted users**, because invitations are bound to email identity.
 
-Ustaw `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_ADMIN_EMAIL`, `SMTP_SENDER_NAME`. Dostosuj domeny i `MAILER_URLPATHS_*` do przykładu, wszystkie linki prowadzą przez BFF `/api/auth/verify`. Port 587/STARTTLS jest typowym wyborem; sprawdź wymagania swojego dostawcy. Następnie odtwórz kontenery przez ten sam główny Compose i przetestuj rejestrację oraz reset na własnej skrzynce. Bez SMTP aplikacja uczciwie informuje, że reset przez email jest niedostępny.
+Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_ADMIN_EMAIL`, `SMTP_SENDER_NAME`. Match domains and `MAILER_URLPATHS_*` to the example; all links pass through BFF `/api/auth/verify`. Port 587/STARTTLS is common, but check your provider’s requirements. Then recreate containers using the same root Compose and test registration/reset with your own mailbox. Without SMTP, the application states that email password reset is unavailable.
 
-## Sprawdzenie
+## Verification
 
 ```sh
 docker compose ps
@@ -65,12 +65,12 @@ docker compose logs --tail=100 migrate api worker
 curl -fsS http://localhost:8080/api/health
 ```
 
-`migrate` ma zakończyć się kodem 0; to poprawny stan jednorazowej usługi. Pozostałe usługi powinny działać. Otwórz aplikację, zarejestruj konto, utwórz garderobę, dodaj zdjęcie, zapisz ubranie i sprawdź katalog. Nie potrzeba działającego Ollama. Pierwsze pobranie obrazów i zależności Deno potrzebuje Internetu; po zbudowaniu obrazy i cache są lokalne.
+`migrate` should exit with code 0; this is correct for a one-shot service. Other services should remain running. Open the application, register, create a wardrobe, add an image, save the garment, and inspect the catalog. Ollama is not required. Initial image and Deno dependency downloads need Internet access; built images/caches are local afterward.
 
 ## Studio
 
-Studio i brama nie mają opublikowanych portów. Do tymczasowego dostępu administrator może uruchomić na serwerze przekierowanie dostępne **wyłącznie na localhost** i tunel SSH; nie zmieniaj routingu publicznej aplikacji na pełne Supabase API. Alternatywnie pracuj przez `docker compose exec -T db psql -U postgres -d postgres`. `DASHBOARD_PASSWORD` jest losowy, ale hasło samo w sobie nie zastępuje izolacji sieci.
+In the phase-1 setup, Studio and the gateway had no published ports. For temporary access, an administrator can create a server-side forward available **only on localhost**, then use SSH tunneling; do not expose the full Supabase API through public application routing. Alternatively use `docker compose exec -T db psql -U postgres -d postgres`. `DASHBOARD_PASSWORD` is random, but a password alone does not replace network isolation.
 
 ## Ollama
 
-W fazie 1 `OLLAMA_BASE_URL` i `OLLAMA_MODEL` są zarezerwowane dla kolejnego etapu. Żadne obecne zadanie nie odpytuje AI. Nie wystawiaj Ollama do Internetu; przyszły worker będzie łączyć się z adresem LAN. Wizualizacje i rozpoznawanie metek nie są jeszcze funkcjami MVP.
+In phase 1, `OLLAMA_BASE_URL` and `OLLAMA_MODEL` were reserved for a later stage, with no jobs querying AI. Never expose Ollama publicly; the planned worker would use its LAN address. Visualizations and label recognition were not yet MVP features at that snapshot.

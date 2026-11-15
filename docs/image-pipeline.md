@@ -1,32 +1,32 @@
-> Dokument zachowuje historyczny audyt i przebieg implementacji. Aktualny stan wdrożenia i wyniki testów opisuje `docs/progress.md`. Nie należy traktować początkowego opisu braków jako stanu bieżącego.
+> This document preserves the historical audit and implementation process. `docs/progress.md` describes current deployment/test results; do not treat initial gaps as the current state.
 
-# Audyt i plan pipeline'u zdjęć
+# Image pipeline audit and plan
 
-Audyt: BFF konwertował upload do WebP i usuwał EXIF, więc oryginał nie był zachowany. Worker tylko odczytywał metadane. Nie było modelu segmentacji, zdjęć katalogowych, analizy AI ani OCR. Rozpoczęta korekta ręcznego obrotu nadpisywała referencję obrazu — zastępujemy ją niedestrukcyjną regeneracją wariantów.
+Audit: the BFF converted uploads to WebP and removed EXIF, losing originals. The worker only read metadata. There was no segmentation model, catalog photography, AI analysis, or OCR. Initial manual rotation work replaced the image reference; this is being replaced with non-destructive variant regeneration.
 
-Plan: zachować nowe uploady bez zmian; dodać warianty i rewizje zadań; uruchomić U²-NetP przez ONNX Runtime CPU w workerze; Sharp zastosuje maskę, obrót, kadr i kompozycję. Oddzielna kolejka AI wykorzysta Ollama do analizy i metek, z zapisaniem sugestii do akceptacji. Frontend będzie odpytywał status i przełączał warianty. Test obejmie rzeczywiste zdjęcie zapisane w istniejącym Storage, bez jego zmiany/usunięcia.
+Plan: preserve new uploads unchanged, add variants/job revisions, run U²-NetP on ONNX Runtime CPU in the worker, and use Sharp for masking, rotation, cropping, and composition. A separate AI queue uses Ollama for garment/label analysis and saves reviewable suggestions. Frontend polls status and switches variants. Testing uses a real existing Storage image without changing or deleting it.
 
-Model: U²-NetP (Apache-2.0, eksport rembg) jest małym modelem wykrywania wyróżniającego się obiektu, nie specjalistycznym modelem odzieży. 320×320 i około 4.4 MiB wag pozwalają na CPU i pojedynczą instancję ONNX w Node. Kompromis: cienkie paski, koronki i niski kontrast mogą mieć gorszą maskę; jakość sprawdzamy na rzeczywistym zdjęciu. Nie deklarujemy benchmarku N100/N150 bez testu na tym sprzęcie. Model przypięty SHA-256 będzie wbudowany w obraz, bez pobierania przy każdym zadaniu.
+Model: U²-NetP (Apache-2.0, rembg export) is a small salient-object model, not garment-specific. Its 320×320 input and approximately 4.4 MiB weights suit CPU execution and one Node ONNX instance. Thin straps, lace, and low contrast can yield weaker masks; evaluate quality on a real photo. No N100/N150 benchmark is claimed without hardware testing. SHA-256-pinned weights are baked into the image rather than downloaded for every job.
 
-Ollama działa wyłącznie na oddzielnym PC z GTX 1060 6 GB. Konfiguracja: OLLAMA_BASE_URL wskazuje adres LAN, OLLAMA_VISION_MODEL model zainstalowany na PC. Aplikacja nie instaluje serwera Ollama ani nie pobiera wag vision LLM. Niedostępność AI powoduje odłożenie zadań analizy, nie blokuje obróbki CPU. Niepewna orientacja jest zachowywana z możliwością ręcznej korekty; bez AI nie zgadujemy góry ubrania na podstawie jego proporcji.
+Ollama runs only on a separate PC with GTX 1060 6 GB. OLLAMA_BASE_URL points to its LAN address; OLLAMA_VISION_MODEL selects a model installed there. The application neither installs Ollama nor downloads vision LLM weights. AI downtime defers analysis without blocking CPU processing. Uncertain orientation is preserved with manual correction; without AI, garment proportions are not used to guess which edge is the top.
 
-## Uruchomienie i ograniczenia
+## Running and limitations
 
-`docker compose up -d --build` nadal uruchamia cały stos. Nie ma kontenera Ollama. Model segmentacji (4 574 861 bajtów, SHA-256 `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8`) jest w `infra/models`, z opisem licencji i źródłem. ONNX Runtime używa wyłącznie CPU, dwóch wątków i jednego równoległego zadania obrazu; instalacja dodatkowych binariów CUDA jest wyłączona. Worker ma limit 1536 MiB; pełny Supabase nadal wymaga osobnego zapasu RAM.
+`docker compose up -d --build` still starts the whole stack; there is no Ollama container. The segmentation model (4,574,861 bytes, SHA-256 `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8`) is in `infra/models` with license/source documentation. ONNX Runtime is CPU-only, using two threads and one concurrent image job; extra CUDA binaries are not installed. Worker memory is capped at 1536 MiB; full Supabase needs additional RAM.
 
-Konfiguracja zdalnego PC (wartości przykładowe, nie automatyczny wybór modelu):
+Remote PC configuration (example values, not automatic model selection):
 
 ```dotenv
 OLLAMA_BASE_URL=http://192.168.1.80:11434
 OLLAMA_VISION_MODEL=nazwa-juz-zainstalowanego-modelu-vision
 ```
 
-Worker wywołuje `/api/chat`; nigdy `/api/pull`. Lokalny runtime segmentacji nie jest vision LLM. Puste ustawienia, brak modelu na PC lub jego niedostępność zostawiają zadania analizy w PostgreSQL i BullMQ, z ponowieniem co 60 s. Kolejki `wardrobe` i `wardrobe-ai` są oddzielne. Zwalidowane sugestie zdjęcia i odczytu metki są zapisywane przy zdjęciu; użytkownik zaznacza pola i zatwierdza ich zastosowanie. Materiał i rozmiar nie są przyjmowane z analizy zdjęcia ubrania. OCR metek realizuje zdalny model vision; nie ma udawanego lokalnego odczytu przy wyłączonej Ollamie.
+Worker calls `/api/chat`, never `/api/pull`. Local segmentation is not a vision LLM. Empty settings, a missing model, or an unavailable PC leave analysis jobs in PostgreSQL/BullMQ, retrying every 60 seconds. `wardrobe` and `wardrobe-ai` are separate queues. Validated garment/label suggestions are saved with the image; the user selects fields and approves applying them. Material and size are not accepted from garment-photo analysis. Label OCR uses the remote vision model; disabled Ollama does not produce pretend local OCR.
 
-Maska jest wyliczana z pikseli. Sharp zachowuje fakturę i kolor, stosuje przezroczystość, kadruje do obiektu z marginesem, komponuje na tle `#f5f4f0` do 1200×1500 i tworzy miniaturę 320×400. Nie stosujemy generatywnego usuwania zagnieceń ani agresywnej zmiany ekspozycji. Ubrania ciemne pozostają ciemne. Model nie prostuje geometrycznie rękawów ani nie odtwarza brakujących fragmentów.
+The mask is calculated from pixels. Sharp preserves texture/color, applies transparency, crops with a margin, composites onto `#f5f4f0` at 1200×1500, and creates a 320×400 thumbnail. There is no generative crease removal or aggressive exposure alteration; dark garments remain dark. The model does not geometrically straighten sleeves or reconstruct missing regions.
 
-EXIF jest normalizowany. Kierunek ubrania może zasugerować wyłącznie zdalny model vision: obrót automatyczny wymaga pewności ≥0.85, w przeciwnym razie zachowujemy orientację. Bez dostępnego PC można ręcznie obrócić o 90° lub dwukrotnie o 180°; generowanie zawsze zaczyna od niezmienionego oryginału. To zabezpieczenie nie gwarantuje poprawności subiektywnej pewności modelu; użytkownik może skorygować wynik.
+EXIF is normalized. Only the remote vision model can suggest orientation: automatic rotation requires confidence ≥0.85; otherwise orientation is preserved. Without the PC, manual 90° or two-step 180° rotation is available; generation always starts from the unchanged original. This safeguard cannot guarantee the model’s subjective confidence is correct; users can correct results.
 
-Warianty mają deterministyczne ścieżki `image_id/vREVISION-PIPELINE_VERSION/…`. Ponowienie tego samego zadania nadpisuje tylko warianty tej rewizji, nigdy oryginał. Świadome ponowne przetwarzanie tworzy nową rewizję. Starsze rewizje pozostają zachowane; automatyczny garbage collector nie został dodany. Nowe oryginały zawierają pierwotny EXIF (mogą zawierać GPS) i są dostępne wyłącznie osobom z dostępem do garderoby; warianty nie zawierają EXIF.
+Variants use deterministic `image_id/vREVISION-PIPELINE_VERSION/…` paths. Retrying a job overwrites only that revision’s variants, never originals. Deliberate reprocessing creates a new revision; older revisions are retained, with no automatic garbage collector. New originals retain initial EXIF, potentially including GPS, and are available only to wardrobe-authorized users; variants strip EXIF.
 
-Test realnego modelu: `GARMENT_FIXTURE=/path/to/garment.webp pnpm exec tsx tests/pipeline-real.ts` w środowisku Linux z zainstalowanymi zależnościami. ONNX Runtime 1.31.1 nie zawiera binariów macOS x64 — uruchamiaj model w kontenerze. Prywatne zdjęcie testowe i wyniki nie są dodawane do repozytorium.
+Real-model test: `GARMENT_FIXTURE=/path/to/garment.webp pnpm exec tsx tests/pipeline-real.ts` on Linux with dependencies installed. ONNX Runtime 1.31.1 has no macOS x64 binaries; run it in a container. Private test images/results are not committed.

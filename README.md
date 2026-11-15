@@ -1,74 +1,80 @@
 # Smart Wardrobe
 
-**Prywatna garderoba cyfrowa z polskim interfejsem, lokalną analizą zdjęć i propozycjami stylizacji z ubrań, które naprawdę posiadasz.**
+**A private digital wardrobe with English and Polish interfaces, local image analysis, and outfit recommendations using garments you actually own.**
 
-Smart Wardrobe pomaga uporządkować ubrania własne i rodzinne: przesłać zdjęcia, przygotować fotografie katalogowe, rozpoznać kategorię i kolor, kontrolować pranie oraz zapisywać zestawy. Aplikacja jest self-hosted — konta, baza i zdjęcia pozostają na Twojej infrastrukturze. Nie wymaga konta Supabase Cloud ani płatnego API AI.
+Smart Wardrobe helps organize personal and family clothing: upload images, prepare catalog photographs, identify categories and colors, manage laundry, and save outfits. The application is self-hosted: accounts, data, and photos stay on your infrastructure. The core wardrobe and CPU image pipeline do not require Supabase Cloud or a paid AI API. Gemini-powered outfit and packing enrichment requires a user-configured Gemini credential.
 
-To React SPA dla komputera i telefonu, uruchamiana wraz z całym zapleczem przez **jeden główny Docker Compose**. Domyślna analiza ubrań i usuwanie tła działają na CPU. Ollama na osobnym komputerze LAN jest opcjonalna.
+This React SPA works on desktop and mobile and runs with its entire backend through **one root Docker Compose configuration**. Default garment analysis and background removal run on the CPU. Ollama on a separate LAN computer is optional.
 
-## Spis treści
+## Contents
 
-- [Co potrafi aplikacja](#co-potrafi-aplikacja)
-- [Uruchomienie](#uruchomienie)
-- [Jak używać](#jak-używać)
-- [Zdjęcia i analiza AI](#zdjęcia-i-analiza-ai)
-- [Architektura](#architektura)
-- [Konfiguracja](#konfiguracja)
-- [Administracja i utrzymanie](#administracja-i-utrzymanie)
-- [Development i testy](#development-i-testy)
-- [Ograniczenia](#ograniczenia)
-- [Dokumentacja](#dokumentacja)
+- [Development Guide](#development-guide)
 
-## Co potrafi aplikacja
+- [Application features](#co-potrafi-aplikacja)
+- [Getting started](#uruchomienie)
+- [Using the application](#jak-używać)
+- [Images and AI analysis](#zdjęcia-i-analiza-ai)
+- [Architecture](#architektura)
+- [Configuration](#konfiguracja)
+- [Administration and maintenance](#administracja-i-utrzymanie)
+- [Development and tests](#development-i-testy)
+- [Limitations](#ograniczenia)
+- [Documentation](#dokumentacja)
 
-| Obszar      | Funkcje                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------ |
-| Konto       | Rejestracja, logowanie, wylogowanie, odzyskiwanie hasła, profil i ustawienia                                 |
-| Garderoby   | Prywatne i rodzinne przestrzenie, członkowie, role i zaproszenia                                             |
-| Katalog     | Wyszukiwanie, filtrowanie, ulubione, edycja, archiwizacja i usuwanie ubrań                                   |
-| Import      | Pojedyncze ubrania lub do 200 zdjęć w partii; jedno zdjęcie importu tworzy jedno ubranie                     |
-| Fotografie  | Zachowany oryginał, usunięte tło, przezroczysty PNG, zdjęcie katalogowe i miniatura                          |
-| Orientacja  | Ręczny obrót w krokach 90°, podgląd i ponowne przetwarzanie bez nadpisania oryginału                         |
-| Analiza     | Lokalna klasyfikacja kategorii, koloru i wzoru przez FashionSigLIP; opcjonalna analiza Ollama i odczyt metek |
-| Metadane    | Automatyczne nazwy, reguły ciepłoty 1–5, sugestie do akceptacji i opcja automatycznego nadpisywania          |
-| Stylizacje  | Propozycje z dostępnych ubrań, zapis zestawów, dobór opcjonalnego paska                                      |
-| Użytkowanie | Statusy prania i historia noszenia                                                                           |
-| Zadania     | Przetwarzanie w tle, postęp, błędy i ponawianie; administracyjny Bull Board                                  |
-| Telefon     | Responsywny interfejs, nawigacja mobilna i PWA                                                               |
+<a id="co-potrafi-aplikacja"></a>
 
-## Uruchomienie
+## Application features
 
-### Wymagania
+| Area        | Features                                                                                                             |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| Account     | Registration, sign-in, sign-out, password recovery, profile, and settings                                            |
+| Wardrobes   | Private and family spaces, members, roles, and invitations                                                           |
+| Catalog     | Search, filters, favorites, editing, archiving, and deleting garments                                                |
+| Import      | Single garments or batches of up to 200 images; each imported image creates one garment                              |
+| Photographs | Preserved original, background removal, transparent PNG, catalog image, and thumbnail                                |
+| Orientation | Manual rotation in 90-degree steps, preview, and reprocessing without overwriting the original                       |
+| Analysis    | Local category, color and pattern classification with FashionSigLIP; optional Ollama analysis and care-label reading |
+| Metadata    | Automatic names, warmth rules from 1 to 5, suggestions for approval, and optional automatic overwrites               |
+| Outfits     | Recommendations from available garments, saved outfits, and optional belt selection                                  |
+| Usage       | Laundry statuses and wear history                                                                                    |
+| Jobs        | Background processing, progress, errors, and retries; administrative Bull Board                                      |
+| Mobile      | Responsive interface, mobile navigation and PWA                                                                      |
 
-- Linux z Docker Engine i Compose lub **macOS z OrbStack**.
-- Node.js 26 do przygotowania konfiguracji; pnpm 12 do pracy nad kodem.
-- Jako punkt startowy: 4 vCPU, 8 GB RAM i 40–60 GB SSD **plus zdjęcia, modele i backupy**. To zalecenie, nie wynik benchmarku N100/N150. Nie zakładamy, że pełny stos zmieści się w 4 GB RAM.
-- Internet podczas pierwszego przygotowania obrazów i pobierania modeli CPU.
+<a id="uruchomienie"></a>
 
-Na macOS standardowy backend plikowy Supabase wymaga silnika, który poprawnie obsługuje linuksowe xattr na folderach Maca. W tym projekcie sprawdzono **OrbStack**; współdzielenie plików Docker Desktop zwracało `ENOTSUP`. Sam APFS nie rozwiązuje problemu warstwy udostępniania. [Szczegóły Storage](infra/storage/README.md).
+## Getting started
 
-### Nowa instalacja
+### Requirements
+
+- Linux with Docker Engine and Compose, or **macOS with OrbStack**.
+- Node.js 26 for configuration setup; pnpm 12 for development.
+- Suggested starting resources: 4 vCPUs, 8 GB RAM, and 40–60 GB SSD **plus images, models, and backups**. This is a recommendation, not an N100/N150 benchmark. Do not assume the full stack fits in 4 GB RAM.
+- Internet access is needed for initial image preparation and CPU model downloads.
+
+On macOS, the standard Supabase file backend requires an engine that supports Linux xattrs on Mac folders correctly. This project verified **OrbStack**; Docker Desktop file sharing returned `ENOTSUP`. APFS alone does not resolve the sharing-layer limitation. [Storage details](infra/storage/README.md).
+
+### New installation
 
 ```sh
-# Na Macu najpierw uruchom OrbStack:
+# On Mac, start OrbStack first:
 docker context use orbstack
 
-# W katalogu repozytorium:
+# From the repository root:
 node scripts/setup.mjs
 ```
 
-Na Linuxie pomiń wybór kontekstu OrbStack. Setup tworzy lokalny `.env` z losowymi sekretami; istniejącego pliku nie nadpisuje. Sprawdź adresy i ustawienia poczty przed startem.
+On Linux, skip selecting the OrbStack context. Setup creates a local `.env` with random secrets and never overwrites an existing file. Review addresses and mail settings before starting.
 
-Przed pierwszym buildem przygotuj wagi CPU, których nie przechowujemy w Git: [FashionSigLIP — pobranie i SHA-256](infra/models/fashion-siglip/README.md). Model usuwania tła `u2netp.onnx` również musi znajdować się w `infra/models/`, zgodnie z [opisem i SHA-256](infra/models/README.md). [Dockerfile usług Node](infra/Dockerfile.node) kopiuje lokalne wagi do obrazu; nie zastępuje ich pobrania.
+Before the first build, prepare CPU weights, which are not stored in Git: [FashionSigLIP downloads and SHA-256](infra/models/fashion-siglip/README.md). The `u2netp.onnx` background removal model must also be present in `infra/models/`, following its [description and SHA-256](infra/models/README.md). The [Node services Dockerfile](infra/Dockerfile.node) copies local weights into the image; it does not download them.
 
 ```sh
 docker compose up -d --build
 docker compose ps
 ```
 
-Nie uruchamiaj osobnego wdrożenia Supabase. Usługa `migrate` jest jednorazowa — po sukcesie ma stan zakończony, a nie stale działający.
+Do not launch a separate Supabase deployment. The `migrate` service is a one-shot operation: after success it is exited, rather than continuously running.
 
-### Istniejąca instalacja na Macu
+### Existing Mac installation
 
 ```sh
 cd ~/Desktop/Projekty/adw-smart-wardrobe
@@ -76,244 +82,256 @@ docker context use orbstack
 docker compose up -d --build
 ```
 
-**Zmiana kontekstu nie przenosi danych.** Powyższe dotyczy już zmigrowanego środowiska. Przy przenoszeniu innej instalacji najpierw zabezpiecz i przenieś wolumeny PostgreSQL/Redis oraz pliki Storage z xattr. Nie uruchamiaj tej samej instalacji równolegle w dwóch silnikach.
+**Changing the context does not migrate data.** The instructions above describe an already migrated environment. When moving another installation, first back up and transfer PostgreSQL/Redis volumes and Storage files with their xattrs. Do not run the same installation simultaneously in two engines.
 
-### Adresy lokalne
+### Local addresses
 
-| Usługa          | Adres                                   | Dostęp                                                            |
-| --------------- | --------------------------------------- | ----------------------------------------------------------------- |
-| Aplikacja       | http://localhost:8080                   | Konto Smart Wardrobe                                              |
-| OpenAPI         | http://localhost:8080/api/docs          | Dokumentacja REST API                                             |
-| JSON OpenAPI    | http://localhost:8080/api/docs/json     | Specyfikacja API                                                  |
-| Supabase Studio | http://localhost:8000                   | Basic Auth: `DASHBOARD_USERNAME` i `DASHBOARD_PASSWORD` z `.env`  |
-| Bull Board      | http://localhost:8080/api/admin/queues/ | Sesja aplikacji i konto dopuszczone przez `QUEUE_ADMIN_USER_IDS`  |
-| PostgreSQL      | `127.0.0.1:54322`                       | Użytkownik `postgres`, baza `postgres`, hasło `POSTGRES_PASSWORD` |
+| Service         | Address                                 | Access                                                                |
+| --------------- | --------------------------------------- | --------------------------------------------------------------------- |
+| Application     | http://localhost:8080                   | Smart Wardrobe account                                                |
+| OpenAPI         | http://localhost:8080/api/docs          | REST API documentation                                                |
+| JSON OpenAPI    | http://localhost:8080/api/docs/json     | API specification                                                     |
+| Supabase Studio | http://localhost:8000                   | Basic Auth: `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` from `.env` |
+| Bull Board      | http://localhost:8080/api/admin/queues/ | Application session and an account allowed by `QUEUE_ADMIN_USER_IDS`  |
+| PostgreSQL      | `127.0.0.1:54322`                       | User `postgres`, database `postgres`, password `POSTGRES_PASSWORD`    |
 
-Studio i PostgreSQL są ograniczone do loopback hosta. Hasło Studio nie jest hasłem konta aplikacji. Redis nie ma opublikowanego portu.
+Studio and PostgreSQL are restricted to the host loopback interface. The Studio password is not an application-account password. Redis has no published port.
 
-## Jak używać
+<a id="jak-używać"></a>
 
-### 1. Załóż konto i utwórz garderobę
+## Using the application
 
-1. Otwórz aplikację i wybierz rejestrację albo zaloguj się.
-2. Użyj przycisku **Utwórz garderobę** lub przycisku przy selektorze garderoby.
-3. Wybierz prywatną lub rodzinną przestrzeń i nadaj jej nazwę.
-4. Wybieraj aktywną garderobę w selektorze aplikacji — import i propozycje zestawów dotyczą tej przestrzeni.
+### 1. Register and create a wardrobe
 
-Rejestracja bez potwierdzenia zależy od `ENABLE_EMAIL_AUTOCONFIRM`. Odzyskiwanie hasła wymaga działającej poczty SMTP. Aplikacja nie potrafi dostarczyć wiadomości bez skonfigurowanego serwera.
+1. Open the application and register or sign in.
+2. Use **Create wardrobe** or the button next to the wardrobe selector.
+3. Choose a private or family space and give it a name.
+4. Select the active wardrobe using the application selector: imports and outfit suggestions apply to that space.
 
-### 2. Dodaj jedno ubranie
+Registration without confirmation depends on `ENABLE_EMAIL_AUTOCONFIRM`. Password recovery requires working SMTP delivery. The application cannot deliver messages without a configured mail server.
 
-Otwórz **Moja garderoba → Dodaj ubranie** lub `/garments/new`. Wybierz zdjęcie i zapisz ubranie. Nazwa jest opcjonalna: bez niej aplikacja przydziela unikalną nazwę tymczasową. Po udanej analizie może zastąpić ją polską nazwą katalogową; ręcznie nadana nazwa pozostaje chroniona.
+### 2. Add one garment
 
-Ubranie pojawia się w katalogu przed zakończeniem obróbki. Otwórz jego szczegóły, aby zobaczyć status zdjęcia i analizę. Możesz samodzielnie uzupełniać metadane bez czekania na AI.
+Open **My wardrobe → Add garment** or `/garments/new`. Select an image and save the garment. The name is optional: when omitted, the application assigns a unique temporary name. Successful analysis may replace it with a Polish catalog name; manually entered names remain protected.
 
-### 3. Zaimportuj wiele ubrań
+The garment appears in the catalog before image processing finishes. Open its details to inspect the image and analysis status. You can enter metadata manually without waiting for AI.
 
-Otwórz **`/garments/import`**, np. http://localhost:8080/garments/import.
+### 3. Import multiple garments
 
-1. Wybierz właściwą garderobę.
-2. Przeciągnij zdjęcia lub zaznacz wiele plików w oknie wyboru.
-3. Jedna partia może zawierać **do 200 zdjęć JPEG/PNG/WebP, maksymalnie 10 MB każde**. HEIC nie jest obsługiwanym formatem tego formularza — wcześniej przygotuj JPEG.
-4. Obserwuj postęp i komunikaty przy poszczególnych plikach. Nieudane przesłanie można ponowić.
+Open **`/garments/import`**, for example http://localhost:8080/garments/import.
 
-Upload ma współbieżność 3, a analiza działa w osobnej kolejce. Jeden błąd nie anuluje całej partii. „Gotowe” oznacza przygotowanie zdjęcia katalogowego; metadane AI mogą pojawić się później.
+1. Select the correct wardrobe.
+2. Drag images into the form or select multiple files in the file picker.
+3. A batch can contain **up to 200 JPEG/PNG/WebP images, at most 10 MB each**. This form does not support HEIC: convert those images to JPEG first.
+4. Monitor progress and messages for each file. Failed uploads can be retried.
 
-Możesz przechodzić między ekranami, ale **nie zamykaj ani nie odświeżaj karty podczas uploadu** — lista plików oczekujących jest w pamięci przeglądarki. Już przesłane ubrania i zadania są trwałe i przetwarzają się na serwerze.
+Uploads use concurrency 3, while analysis runs in a separate queue. One failure does not cancel the entire batch. “Ready” means the catalog image has been prepared; AI metadata may arrive later.
 
-### 4. Popraw zdjęcie lub metadane
+You can navigate between screens, but **do not close or refresh the tab during upload**: pending files are held in browser memory. Already uploaded garments and jobs are durable and continue processing on the server.
 
-W szczegółach ubrania (`/garments/<id>`) możesz obejrzeć wersję katalogową, oryginał i wycięcie oraz przejść do edycji.
+### 4. Correct an image or metadata
 
-Aby poprawić orientację, użyj **Obróć w lewo / Obróć w prawo**, sprawdź podgląd, a następnie **Zapisz obrót** albo **Anuluj**. Zapis zleca odtworzenie zdjęć pochodnych. Oryginał pozostaje bez zmian; wybrany obrót jest trwały i nie powinien być zastępowany sugestią modelu.
+In garment details (`/garments/<id>`), you can view the catalog image, original, and cutout and open the editor.
 
-Do pojedynczej ponownej analizy służy **Powtórz analizę AI**. Postęp jest odświeżany automatycznie. To inna operacja niż ponowne usuwanie tła.
+To correct orientation, use **Rotate left / Rotate right**, inspect the preview, and choose **Save rotation** or **Cancel**. Saving requests regeneration of derived images. The original remains unchanged; the selected rotation is durable and must not be replaced by a model suggestion.
 
-### 5. Zdecyduj o automatycznym zapisie AI
+Use **Retry AI analysis** to analyze one garment again. Progress refreshes automatically. This is separate from repeating background removal.
 
-W **Ustawieniach** (`/settings`) znajduje się opcja:
+### 5. Choose automatic AI metadata persistence
 
-> Pozwalaj AI na nadpisywanie metadanych ubrań
+**Settings** (`/settings`) includes this option:
 
-Domyślnie jest wyłączona. Pierwsza analiza nowego, nieedytowanego ubrania może automatycznie uzupełnić dane; późniejsze zmiany wymagają akceptacji zgodnie z dotychczasowym procesem. Włączenie opcji zezwala również na automatyczne aktualizowanie obsługiwanych parametrów przy ponownej analizie, także wcześniej poprawionych ręcznie.
+> Allow AI to overwrite garment metadata
 
-Opcja jest zapisywana osobno dla użytkownika. Nie uruchamia analizy sama z siebie. Nie nadpisuje ręcznych nazw i notatek, zdjęć, właściciela ani relacji. Puste i nierozpoznane wartości są pomijane. Edycja w trakcie analizy blokuje automatyczny zapis nieaktualnego wyniku.
+It is disabled by default. The first analysis of a new, unedited garment may populate metadata automatically; later changes require approval through the existing review flow. Enabling this option also permits automatic updates to supported fields during subsequent analyses, including fields previously edited manually.
 
-W ustawieniach przy garderobie możesz zlecić analizę wszystkich jej ubrań. Wykorzystuje ona zapisane ręczne obroty. To potencjalnie długa operacja — nie trzeba pozostawać na ekranie.
+The option is stored per user. It does not trigger analysis itself. It does not overwrite manual names or notes, images, ownership, or relationships. Empty and unrecognized values are skipped. Editing during analysis prevents automatic saving of an outdated result.
 
-### 6. Korzystaj ze stylizacji i prania
+In wardrobe settings, you can request analysis of all garments in that wardrobe. It uses saved manual rotations. This can be a long-running operation; you do not need to remain on the screen.
 
-- **Stylizacje** (`/outfits`): wybierz okazję i temperaturę, kliknij **Zaproponuj zestawy**. Potrzebujesz poprawnie skategoryzowanej, dostępnej góry i dołu albo sukienki. Propozycje korzystają z rzeczywistych identyfikatorów ubrań aktywnej garderoby.
-- **Zapisane zestawy** (`/saved`): wracaj do zapisanych propozycji. Dostępne są działania związane z noszeniem zestawu.
-- **Pranie** (`/laundry`): zmieniaj statusy: czyste, noszone, brudne, w praniu, suszenie i prasowanie. Dostępność ubrań wpływa na propozycje.
+### 6. Use outfits and laundry
 
-Generator stosuje reguły i różnicuje propozycje; nie gwarantuje unikalnych zestawów przy małej liczbie rzeczy. Do pasujących spodni może dodać posiadany pasek, uwzględniając kolor, styl i buty. Nie dodaje go do dresów czy legginsów.
+- **Outfits** (`/outfits`): choose the occasion and temperature, then click **Suggest outfits**. You need correctly categorized, available tops and bottoms or a dress. Recommendations use real garment IDs from the active wardrobe.
+- **Saved outfits** (`/saved`): return to saved recommendations and use the available wear-related actions.
+- **Laundry** (`/laundry`): change statuses between clean, worn, dirty, washing, drying, and ironing. Garment availability affects recommendations.
 
-### 7. Udostępnij lub usuń garderobę
+The active generator uses Gemini with shared rules and the interpreted style profile; it cannot guarantee unique outfits from a small wardrobe. It may add an owned belt to compatible trousers, considering color, style, and footwear. It does not add belts to tracksuits or leggings.
 
-Na ekranie **Rodzina** (`/family`) zarządzaj członkami i zaproszeniami. Role: właściciel, edytor i przeglądający. Link zaproszenia jest przypisany do adresu e-mail; nie zakładaj, że został automatycznie wysłany pocztą.
+### 7. Share or delete a wardrobe
 
-W **Ustawieniach → Twoje garderoby** właściciel może usunąć garderobę. Najpierw pojawia się potwierdzenie z informacją, że znikną również ubrania, zdjęcia, zestawy i historia tej garderoby — także rzeczy pozostałych członków. Konto użytkownika pozostaje zachowane. Czyszczenie plików i kolejek może dokończyć się w tle.
+On the **Family** screen (`/family`), manage members and invitations. Roles are owner, editor, and viewer. An invitation link is tied to an email address; do not assume that it was emailed automatically.
 
-## Zdjęcia i analiza AI
+In **Settings → Your wardrobes**, the owner can delete a wardrobe. A confirmation first explains that its garments, photos, outfits, and history will also be deleted, including other members’ items. The user account is preserved. File and queue cleanup may finish in the background.
 
-### Dwa niezależne procesy
+<a id="zdjęcia-i-analiza-ai"></a>
+
+## Images and AI analysis
+
+### Two independent processes
 
 ```mermaid
 flowchart LR
-    U[Upload zdjęcia] --> O[Prywatny oryginał w Storage]
-    O --> J[Trwałe zadania PostgreSQL i BullMQ]
-    J --> P[CPU: Sharp i U2NetP ONNX]
-    P --> C[Przezroczysty PNG, katalog i miniatura]
-    J --> A[CPU: FashionSigLIP lub opcjonalna Ollama]
-    A --> M[Walidacja i reguły zapisu metadanych]
+    U[Image upload] --> O[Private original in Storage]
+    O --> J[Durable PostgreSQL and BullMQ jobs]
+    J --> P[CPU: Sharp and U2NetP ONNX]
+    P --> C[Transparent PNG, catalog image and thumbnail]
+    J --> A[CPU: FashionSigLIP or optional Ollama]
+    A --> M[Validation and metadata persistence rules]
 ```
 
-Obróbka normalizuje EXIF, uwzględnia zapisany obrót, usuwa tło modelem segmentacji, kadruje i przygotowuje pochodne pliki. Nie generuje nowego wyglądu ubrania i nie usuwa zagnieceń generatywnie. Jakość krawędzi zależy od zdjęcia, kontrastu i modelu. **Gotowe zdjęcie nie oznacza zakończonej analizy metadanych.**
+Processing normalizes EXIF, applies the saved rotation, removes the background with a segmentation model, crops the image, and prepares derived files. It does not generate a new garment appearance or remove creases generatively. Edge quality depends on the photo, contrast, and model. **A ready image does not mean metadata analysis has finished.**
 
-### FashionSigLIP — domyślny klasyfikator CPU
+### FashionSigLIP: the default CPU classifier
 
-`GARMENT_ANALYSIS_PROVIDER=fashion-siglip` wykorzystuje lokalny encoder ONNX `Marqo/marqo-fashionSigLIP` oraz przygotowane opisy kategorii. Rozpoznaje kategorię, kolor i wzór; podobieństwa embeddingów **nie są skalibrowanymi procentami pewności**. Model może się mylić, zwłaszcza przy podobnych krojach i trudnym tle.
+`GARMENT_ANALYSIS_PROVIDER=fashion-siglip` uses the local `Marqo/marqo-fashionSigLIP` ONNX encoder and prepared category descriptions. It identifies category, color, and pattern; embedding similarities **are not calibrated confidence percentages**. The model can be wrong, especially with similar cuts or difficult backgrounds.
 
-Ręczny obrót jest nadrzędny. Porównywanie kategorii dla kilku orientacji nie jest dowodem właściwego ułożenia ubrania i nie obraca automatycznie zapisanych zdjęć. Materiał, rozmiar i marka nie są wiarygodnie wyznaczane przez ten klasyfikator.
+Manual rotation takes priority. Comparing categories across orientations does not prove the correct garment orientation and does not automatically rotate saved images. This classifier cannot reliably determine material, size, or brand.
 
-Ciepłota wynika ze wspólnych reguł: T-shirt/top/szorty 1, koszula/polo/zwykłe długie spodnie 2, bluza/sweter/marynarka 3, kurtka przejściowa 4, zimowa 5. Zmiana kategorii przelicza formularz; ręczna korekta ma pierwszeństwo w bieżącej edycji. Akcesoria nie zwiększają ciepłoty stylizacji.
+Warmth comes from shared rules: T-shirt/top/shorts 1, shirt/polo/ordinary long trousers 2, sweatshirt/sweater/blazer 3, transitional jacket 4, winter jacket 5. Changing category recalculates the form; manual adjustments take priority during the current edit. Accessories do not increase outfit warmth.
 
-### Ollama — opcjonalny komputer LAN
+### Ollama — optional LAN computer
 
-Dla dostawcy Ollama ustaw `GARMENT_ANALYSIS_PROVIDER=ollama`, `OLLAMA_BASE_URL` na adres komputera w LAN i `OLLAMA_VISION_MODEL` na już zainstalowany model vision. W dotychczasowych testach używano m.in. `qwen3-vl:8b`. Nie używaj `localhost` jako adresu innego komputera z perspektywy kontenera.
+For the Ollama provider, set `GARMENT_ANALYSIS_PROVIDER=ollama`, point `OLLAMA_BASE_URL` to the LAN host address, and set `OLLAMA_VISION_MODEL` to an already installed vision model. Previous tests used models including `qwen3-vl:8b`. Do not use `localhost` as the address of another computer from inside a container.
 
-Ollama nie jest uruchamiana w tym Compose. Jest również używana do opcjonalnej analizy metek. Odczytany skład/rozmiar wymaga czytelnej metki i weryfikacji, a nie zgadywania z wyglądu tkaniny. Niedostępność komputera AI nie blokuje konta, katalogu ani lokalnej obróbki. Zadania mają retry/backoff; po wyczerpaniu prób mogą wymagać ręcznego ponowienia. Nie obiecujemy nieskończonego automatycznego retry.
+Ollama does not run in this Compose stack. It also provides optional care-label analysis. Reading composition or size requires a legible label and verification, rather than guessing from fabric appearance. An unavailable AI host does not block accounts, the catalog, or local image processing. Jobs use retries/backoff; exhausted attempts may require a manual retry. Infinite automatic retries are not promised.
 
-## Architektura
+<a id="architektura"></a>
+
+## Architecture
 
 ```mermaid
 flowchart TB
-    Browser[React SPA / PWA] --> Proxy[Caddy: frontend i routing]
-    Proxy --> API[Fastify BFF: jedyne API aplikacji]
+    Browser[React SPA / PWA] --> Proxy[Caddy: frontend and routing]
+    Proxy --> API[Fastify BFF: the only application API]
     API --> Auth[Supabase Auth / GoTrue]
     API --> Gateway[Supabase Gateway / Envoy]
-    Gateway --> REST[PostgREST i PostgreSQL z RLS]
+    Gateway --> REST[PostgREST and PostgreSQL with RLS]
     Gateway --> Storage[Supabase Storage]
-    Storage --> Disk[Folder data/storage z xattr]
-    API --> Jobs[PostgreSQL: trwały outbox zadań]
+    Storage --> Disk[data/storage directory with xattrs]
+    API --> Jobs[PostgreSQL: durable job outbox]
     Jobs --> Worker[Worker Node.js]
     Worker <--> Redis[Redis / BullMQ]
     Worker --> Gateway
-    Worker --> CPU[Sharp i modele ONNX na CPU]
-    Worker -. opcjonalnie .-> Ollama[Komputer LAN z Ollamą]
+    Worker --> CPU[Sharp and CPU ONNX models]
+    Worker -. optional .-> Ollama[LAN host running Ollama]
 ```
 
-| Warstwa          | Technologia i odpowiedzialność                                                                                    |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Web              | React, Vite, TypeScript, TanStack Router/Query/Table, Tailwind, komponenty Radix, React Hook Form/Zod, PWA        |
-| API/BFF          | Fastify, walidacja Zod, REST/OpenAPI, Pino, sesje, autoryzacja, uploady i zlecanie zadań                          |
-| Worker           | BullMQ, Sharp, ONNX Runtime; przetwarzanie zdjęć i analiza bez blokowania żądań HTTP                              |
-| Tożsamość i dane | Self-hosted Supabase: GoTrue, PostgreSQL, PostgREST, prywatny Storage                                             |
-| Infrastruktura   | Jeden Compose; Caddy, Envoy, Studio, Realtime, imgproxy, postgres-meta, Edge Runtime, Supavisor i trwałe wolumeny |
+| Layer             | Technology and responsibility                                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Web               | React, Vite, TypeScript, TanStack Router/Query/Table, Tailwind, Radix components, React Hook Form/Zod, PWA                  |
+| API/BFF           | Fastify, Zod validation, REST/OpenAPI, Pino, sessions, authorization, uploads, and job submission                           |
+| Worker            | BullMQ, Sharp, ONNX Runtime; image processing and analysis without blocking HTTP requests                                   |
+| Identity and data | Self-hosted Supabase: GoTrue, PostgreSQL, PostgREST, and private Storage                                                    |
+| Infrastructure    | One Compose stack; Caddy, Envoy, Studio, Realtime, imgproxy, postgres-meta, Edge Runtime, Supavisor, and persistent volumes |
 
-Baseline Supabase to przypięte oficjalne wydanie self-hosted **0.8.4**; źródła i sumy są w `infra/supabase/provenance.json`. Ten baseline używa Envoy. Generator `scripts/compose.mjs` odtwarza główny Compose z wersjonowanej konfiguracji upstream.
+The Supabase baseline pins official self-hosted release **0.8.4**; sources and checksums are recorded in `infra/supabase/provenance.json`. This baseline uses Envoy. The `scripts/compose.mjs` generator recreates the root Compose configuration from versioned upstream configuration.
 
-### Granice bezpieczeństwa
+### Security boundaries
 
-Przeglądarka rozmawia z BFF, nie z bazą, Redisem czy uprzywilejowanym Supabase. BFF korzysta z tożsamości zalogowanego użytkownika, a uprawnienia egzekwują również polityki RLS. Worker ma osobne uprawnienia do kontrolowanych operacji wewnętrznych.
+The browser talks to the BFF, rather than directly to the database, Redis, or privileged Supabase services. The BFF uses the signed-in user’s identity, while RLS policies also enforce access. The worker has separate permissions for controlled internal operations.
 
-Sesja to HttpOnly cookie; tokeny Supabase są szyfrowane po stronie serwera. Nie zapisujemy ich w localStorage. Mutacje wymagają kontroli Origin i CSRF. Zdjęcia są prywatne i pobierane przez autoryzowane API. PWA nie utrwala prywatnych odpowiedzi ani zdjęć w cache offline.
+Sessions use HttpOnly cookies; Supabase tokens are encrypted on the server and are not stored in localStorage. Mutations require Origin and CSRF checks. Photos are private and retrieved through authenticated API routes. The PWA does not persist private responses or images in its offline cache.
 
-PostgreSQL jest trwałym źródłem stanu biznesowego zadań. Redis obsługuje transport i blokady; jego utrata nie powinna oznaczać utraty jedynej kopii zleceń. Przetwarzanie zdjęć i analiza mają osobne kolejki, każda z ograniczoną współbieżnością 1.
+PostgreSQL is the durable source of business job state. Redis handles transport and locks; losing Redis must not mean losing the only copy of a submitted job. Image processing and analysis have separate queues, each with concurrency limited to 1.
 
-### Struktura repozytorium
+### Repository structure
 
 ```text
-apps/web/               interfejs i klient REST
-apps/api/               Fastify, sesje, endpointy i migrator
-apps/worker/            kolejki, obróbka i dostawcy analizy
-packages/shared/        schematy Zod, typy i reguły domenowe
-supabase/migrations/    uporządkowane migracje SQL
-infra/supabase/         przypięty oficjalny baseline
-infra/models/           konfiguracja i lokalne wagi CPU; wagi poza Git
-infra/storage/          opis natywnego backendu i test izolowany
-infra/auth-email/       polskie szablony wiadomości Auth
-docs/                   wdrożenie, eksploatacja, decyzje i postęp
-data/storage/          aktywne pliki zdjęć, poza Git
-investigation/         prywatne raporty, eksperymenty i backupy, poza Git
-docker-compose.yml     całe wdrożenie
+apps/web/               UI and REST client
+apps/api/               Fastify, sessions, endpoints and migrator
+apps/worker/            queues, processing, and analysis providers
+packages/shared/        Zod schemas, types, and domain rules
+supabase/migrations/    ordered SQL migrations
+infra/supabase/         pinned official baseline
+infra/models/           configuration and local CPU weights; weights outside Git
+infra/storage/          native backend documentation and isolated test
+infra/auth-email/       Polish Auth email templates
+docs/                   deployment, operations, decisions, and progress
+data/storage/          active image files, outside Git
+investigation/         private reports, experiments and backups, outside Git
+docker-compose.yml     the complete deployment
 ```
 
-## Konfiguracja
+<a id="konfiguracja"></a>
 
-Wzór zmiennych: [`.env.example`](.env.example). Sekrety zapisuj wyłącznie lokalnie, poza Git.
+## Configuration
 
-| Zmienna                                               | Zastosowanie                                                                   |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `APP_ORIGIN`                                          | Główny adres aplikacji                                                         |
-| `APP_ADDITIONAL_ORIGINS`                              | Dokładne dodatkowe originy, np. adres telefonu przez LAN; lista po przecinkach |
-| `SITE_URL`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL` | Publiczne adresy i poprawne linki Auth; ustawiaj spójnie z wdrożeniem          |
-| `COOKIE_SECURE`                                       | `false` dla lokalnego HTTP; `true` dla HTTPS                                   |
-| `SITE_ADDRESS`, `HTTP_PORT`, `HTTPS_PORT`             | Routing i porty Caddy                                                          |
-| `GARMENT_ANALYSIS_PROVIDER`                           | `fashion-siglip` lub `ollama`                                                  |
-| `OLLAMA_BASE_URL`, `OLLAMA_VISION_MODEL`              | Opcjonalny serwer LAN i model vision                                           |
-| `SMTP_*`                                              | Dostarczanie wiadomości rejestracji i odzyskiwania hasła                       |
-| `ENABLE_EMAIL_AUTOCONFIRM`                            | Rejestracja bez obowiązkowego potwierdzenia w konfiguracji developerskiej      |
-| `QUEUE_ADMIN_USER_IDS`                                | Lista UUID kont dopuszczonych do administracji kolejkami; pusta wyłącza panel  |
-| `DASHBOARD_USERNAME`, `DASHBOARD_PASSWORD`            | Ochrona Studio                                                                 |
+Environment variable template: [`.env.example`](.env.example). Store secrets only locally, outside Git.
 
-### Telefon w LAN i PWA
+| Variable                                              | Purpose                                                                                       |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `APP_ORIGIN`                                          | Main application address                                                                      |
+| `APP_ADDITIONAL_ORIGINS`                              | Exact additional origins, such as a phone accessing the application over LAN; comma-separated |
+| `SITE_URL`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL` | Public addresses and valid Auth links; keep them consistent with the deployment               |
+| `COOKIE_SECURE`                                       | `false` for local HTTP; `true` for HTTPS                                                      |
+| `SITE_ADDRESS`, `HTTP_PORT`, `HTTPS_PORT`             | Caddy routing and ports                                                                       |
+| `GARMENT_ANALYSIS_PROVIDER`                           | `fashion-siglip` or `ollama`                                                                  |
+| `OLLAMA_BASE_URL`, `OLLAMA_VISION_MODEL`              | Optional LAN server and vision model                                                          |
+| `SMTP_*`                                              | Delivery of registration and password recovery messages                                       |
+| `ENABLE_EMAIL_AUTOCONFIRM`                            | Registration without mandatory confirmation in development configuration                      |
+| `QUEUE_ADMIN_USER_IDS`                                | Account UUIDs permitted to administer queues; an empty list disables the dashboard            |
+| `DASHBOARD_USERNAME`, `DASHBOARD_PASSWORD`            | Studio access protection                                                                      |
 
-Dodaj dokładny `http://<IP-komputera>:8080` do `APP_ADDITIONAL_ORIGINS` w `.env`, a potem odtwórz API:
+### LAN mobile access and PWA
+
+Add the exact `http://<IP-komputera>:8080` to `APP_ADDITIONAL_ORIGINS` in `.env`, then recreate the API:
 
 ```sh
 docker compose up -d --no-deps api
 ```
 
-Na telefonie otwórz ten sam adres IP z portem 8080. Zmiana IP komputera wymaga aktualizacji originu. Nie ustawiaj wildcardu. Pełna instalowalność PWA i service worker wymagają bezpiecznego kontekstu HTTPS; zwykły HTTP na adresie LAN nie daje tych samych możliwości co localhost.
+On the phone, open the same IP address with port 8080. A computer IP change requires updating the origin. Do not use a wildcard. Full PWA installation and service worker support require a secure HTTPS context; ordinary HTTP on a LAN address does not provide the same capabilities as localhost.
 
-### Poczta developerska
+### Development email
 
-Można korzystać z istniejącego lokalnego serwera SMTP przez profil `dev-mail` i relay Node.js. Nie jest to konfiguracja produkcyjna. Host Maca z kontenera to `host.docker.internal`, a nie `localhost`. Szczegóły w [konfiguracji wiadomości](infra/auth-email/README.md) i komentarzach `.env.example`. Nie commituj loginu ani hasła SMTP.
+An existing local SMTP server can be used through the `dev-mail` profile and Node.js relay. This is not production configuration. The Mac host address from a container is `host.docker.internal`, not `localhost`. See [email configuration](infra/auth-email/README.md) and comments in `.env.example`. Never commit SMTP usernames or passwords.
 
-## Administracja i utrzymanie
+<a id="administracja-i-utrzymanie"></a>
+
+## Administration and maintenance
 
 ```sh
 docker compose ps
 docker compose logs --tail=100 api worker storage
 curl --fail http://localhost:8080/api/health
 
-# Zatrzymanie z zachowaniem danych:
+# Stop while preserving data:
 docker compose stop
 
-# Start bez celowego przebudowywania obrazów:
+# Start without intentionally rebuilding images:
 docker compose up -d
 ```
 
-### Kolejki
+### Queues
 
-Po zalogowaniu kontem administratora otwórz `/api/admin/queues/`. Uprawnienia nadaje konfiguracja UUID, nie sam dostęp do Studio. Panel umożliwia inspekcję stanów BullMQ; sterowanie anulowaniem kolejek jest dostępne pod `/api/admin/queue-control` zgodnie z routingiem BFF. Dla pojedynczego ubrania używaj przycisku ponownej analizy na jego szczegółach.
+After signing in with an administrator account, open `/api/admin/queues/`. UUID configuration grants access; Studio access alone does not. The dashboard inspects BullMQ states; queue cancellation controls are available at `/api/admin/queue-control` through the BFF routes. For a single garment, use the analysis retry button in its details.
 
-Historia Redis ma retencję **do 7 dni, maksymalnie 1000 wpisów** dla zakończonych i błędnych zadań. To dwa ograniczenia: przekroczenie limitu liczby może usunąć wpis wcześniej niż po 7 dniach. Trwały stan aplikacyjny znajduje się również w PostgreSQL.
+Redis history retains completed and failed jobs for **up to 7 days, at most 1000 entries**. These are two limits: the count limit can remove entries before seven days have passed. Durable application state also lives in PostgreSQL.
 
-### Zdjęcia i backupy
+### Images and backups
 
-Aktywne zdjęcia znajdują się w **`./data/storage/`**, bez okresowego eksportu czy synchronizacji z ukrytym wolumenem. Supabase zachowuje katalogi i wersje obiektów: katalog może nazywać się `cutout.png`, a plik w nim mieć nazwę UUID bez rozszerzenia. To nadal zwykły obraz; można użyć Podglądu lub Quick Look. Nie zmieniaj nazw ani nie usuwaj go ręcznie.
+Active images live in **`./data/storage/`**, without periodic export or synchronization with a hidden volume. Supabase retains object directories and versions: a directory may be named `cutout.png` while the file inside has an extensionless UUID name. It is still an ordinary image and can be opened with Preview or Quick Look. Do not rename or delete it manually.
 
-**Pełny backup wymaga PostgreSQL, zdjęć wraz z xattr, kluczy i konfiguracji.** Suma SHA256 potwierdza bajty obrazu, nie zachowanie atrybutów. Nie wykonuj `docker compose down -v`, resetu Supabase ani ręcznego kasowania PGDATA podczas diagnostyki. Procedura: [backupy i odtwarzanie](docs/operations.md).
+**A complete backup requires PostgreSQL, images with xattrs, keys, and configuration.** A SHA256 checksum confirms image bytes, not attribute preservation. Never run `docker compose down -v`, reset Supabase, or manually delete PGDATA during diagnosis. Follow the [backup and recovery procedure](docs/operations.md).
 
-### Najczęstsze problemy
+### Common issues
 
-| Objaw                             | Co sprawdzić                                                                   |
-| --------------------------------- | ------------------------------------------------------------------------------ |
-| `ENOTSUP` przy zdjęciach          | Kontekst Docker i obsługę xattr; na Macu użyj zweryfikowanego OrbStack         |
-| Zdjęcie gotowe, brak metadanych   | Oddzielne zadanie analizy, logi workera, plik wag i wybranego dostawcę         |
-| Ollama nie odpowiada              | Adres LAN i model vision; lokalny katalog i usuwanie tła nie wymagają Ollamy   |
-| Import przerywa się               | Format/rozmiar plików, błędy poszczególnych pozycji; nie zamykaj karty uploadu |
-| Zestawy się nie pojawiają         | Aktywną garderobę, kategorie góra/dół, czystość i dostępność ubrań             |
-| Logowanie na telefonie nie działa | Dokładny origin LAN w `.env` i odtworzenie API                                 |
-| Brak wiadomości resetu hasła      | Działającą konfigurację SMTP; sam HTTP 200 nie potwierdza dostarczenia         |
-| Studio odrzuca hasło              | Dane `DASHBOARD_*`, nie hasło użytkownika Smart Wardrobe                       |
+| Symptom                          | What to check                                                                            |
+| -------------------------------- | ---------------------------------------------------------------------------------------- |
+| `ENOTSUP` for images             | Docker context and xattr support; use the verified OrbStack setup on Mac                 |
+| Image ready but metadata missing | Separate analysis job, worker logs, weight file, and selected provider                   |
+| Ollama is not responding         | LAN address and vision model; local catalog and background removal do not require Ollama |
+| Import is interrupted            | File format/size and errors for individual items; keep the upload tab open               |
+| Outfits do not appear            | Active wardrobe, top/bottom categories, cleanliness, and garment availability            |
+| Phone sign-in does not work      | Exact LAN origin in `.env` and API recreation                                            |
+| No password reset email          | Working SMTP configuration; HTTP 200 alone does not confirm delivery                     |
+| Studio rejects the password      | Credentials from `DASHBOARD_*`, rather than a Smart Wardrobe user password               |
 
-## Development i testy
+<a id="development-i-testy"></a>
 
-Repozytorium używa Node **26.13.0**, pnpm **12.18.0**, strict TypeScript i przypiętego lockfile.
+## Development and tests
+
+The repository uses Node **26.13.0**, pnpm **12.18.0**, strict TypeScript, and a pinned lockfile.
 
 ```sh
 npm install -g pnpm@12.18.0
@@ -324,7 +342,7 @@ pnpm test
 pnpm build
 ```
 
-Dodatkowe testy wymagają pełnego stosu developerskiego:
+Additional tests require the full development stack:
 
 ```sh
 pnpm exec playwright install chromium
@@ -332,41 +350,57 @@ pnpm test:stack
 pnpm test:e2e
 ```
 
-`test:stack` tworzy własne konta i dane, testuje m.in. REST, RLS i Storage oraz sprząta po sukcesie. E2E może pozostawiać dane oznaczone E2E do obejrzenia. Nie uruchamiaj tych testów na danych produkcyjnych bez sprawdzenia ich zakresu.
+`test:stack` creates its own accounts and data, tests REST, RLS, and Storage among other things, and cleans up after success. E2E tests may leave E2E-labelled data for inspection. Do not run these tests on production data without reviewing their scope.
 
-`pnpm dev` uruchamia Vite na 5173 z proxy do API na 3000. Nie uruchamia automatycznie całego backendu. Port BFF nie jest domyślnie publiczny w Compose; lokalny development API wymaga świadomej konfiguracji. Główną drogą uruchamiania pełnego systemu pozostaje Compose.
+`pnpm dev` starts Vite on 5173 with a proxy to the API on 3000. It does not start the entire backend automatically. The BFF port is not public by default in Compose; local API development requires deliberate configuration. Compose remains the main way to start the complete system.
 
-Po zmianie konfiguracji infrastruktury generator uruchamia się z katalogu głównego:
+After changing infrastructure configuration, run the generator from the repository root:
 
 ```sh
 node scripts/compose.mjs
 docker compose config --quiet
 ```
 
-Migracje SQL są uporządkowane i mają sprawdzane checksumy. Nie edytuj już zastosowanych migracji; dodaj nową, przetestowaną migrację. Aktualizacja istniejącej instalacji wymaga backupu i przeglądu oczekujących migracji przed `up --build`.
+SQL migrations are ordered and checksum-verified. Do not edit applied migrations; add a new, tested migration. Updating an existing installation requires a backup and a review of pending migrations before `up --build`.
 
-## Ograniczenia
+<a id="ograniczenia"></a>
 
-- Rozpoznawanie kategorii, kolorów i wzorów jest omylne; automatyczny zapis nie jest gwarancją poprawności.
-- Nie ufamy kątom obrotu proponowanym przez LLM. Ręczna korekta jest dostępna i nadrzędna.
-- Nie odgadujemy składu i rozmiaru ze zwykłego zdjęcia ubrania.
-- Stylizacje opierają się na regułach i ręcznie podanej temperaturze; nie ma automatycznej integracji pogodowej ani realistycznych wizualizacji ComfyUI.
-- Nie wdrożono generatywnego wygładzania ubrań ani gwarantowanej jakości fotografii produktowej.
-- Offline działa powłoka PWA; prywatny katalog, zdjęcia i edycja wymagają połączenia.
-- Przenoszenie ubrania wraz z plikami do innej garderoby wymaga osobnej obsługi i pozostaje ograniczeniem.
-- Zapis SQL i obiektów Storage nie stanowi jednej transakcji — po awarii może być potrzebne ponowienie lub sprzątanie.
+## Limitations
 
-Ostatnia zakończona weryfikacja migracji do OrbStack obejmowała 97 testów, lint, TypeScript, zgodność 548 zdjęć, rzeczywisty upload/download i odmowę dostępu innemu użytkownikowi. To zapis konkretnego sprawdzenia, nie automatyczna gwarancja bieżącego stanu każdej instalacji. Szczegółowe wyniki i nieweryfikowane scenariusze są w raporcie postępu.
+- Category, color, and pattern recognition can be wrong; automatic persistence does not guarantee correctness.
+- LLM-suggested rotation angles are not trusted. Manual correction is available and takes priority.
+- Composition and size are not guessed from an ordinary garment photograph.
+- Outfits use Gemini, shared validation/ranking and a manually supplied temperature; there is no automatic weather integration or realistic ComfyUI visualization.
+- Generative garment smoothing and guaranteed product photography quality are not implemented.
+- The PWA shell works offline; the private catalog, photos, and editing require connectivity.
+- Moving a garment and its files to another wardrobe needs separate handling and remains a limitation.
+- SQL writes and Storage object writes are not one transaction; a failure may require a retry or cleanup.
 
-## Dokumentacja
+The last completed OrbStack migration verification covered 97 tests, lint, TypeScript, consistency of 548 photos, a real upload/download, and denial of access to another user. This records a specific verification, rather than automatically guaranteeing every installation’s current state. Detailed results and unverified scenarios are in the progress report.
 
-- [Proxmox LXC, HTTPS i wdrożenie](docs/deployment-proxmox.md)
-- [Szczegóły architektury i decyzje](docs/architecture.md) — historyczne opisy czytaj wraz z aktualnym raportem postępu
-- [Eksploatacja, backup i restore](docs/operations.md)
-- [Natywny Storage, OrbStack i xattr](infra/storage/README.md)
-- [Model FashionSigLIP](infra/models/fashion-siglip/README.md)
-- [Szablony wiadomości Auth](infra/auth-email/README.md)
-- [Postęp, testy i znane ograniczenia](docs/progress.md)
-- [Konwencje pracy nad projektem](AGENTS.md)
+<a id="dokumentacja"></a>
 
-Nie dodawaj do Git `.env`, zdjęć, wolumenów, prywatnych raportów, backupów ani wag modeli. Katalogi `data/` i `investigation/` są celowo ignorowane.
+## Documentation
+
+- [Proxmox LXC, HTTPS, and deployment](docs/deployment-proxmox.md)
+- [Architecture and decisions](docs/ARCHITECTURE.md) — read historical descriptions alongside the current progress report
+- [Operations, backup and recovery](docs/operations.md)
+- [Native Storage, OrbStack and xattrs](infra/storage/README.md)
+- [FashionSigLIP model](infra/models/fashion-siglip/README.md)
+- [Auth email templates](infra/auth-email/README.md)
+- [Progress, tests, and known limitations](docs/progress.md)
+- [Project working conventions](AGENTS.md)
+
+Do not add `.env`, photos, volumes, private reports, backups, or model weights to Git. The `data/` and `investigation/` directories are intentionally ignored.
+
+# Development Guide
+
+Use the [complete Development Guide](docs/development/README.md) to follow a feature from React through Fastify, Supabase, worker processing, tests and a safe self-hosted deployment. The guide is based on current imports, route registrations, schemas and Compose configuration.
+
+- [Project overview, feature map, repository structure and data flows](docs/development/README.md)
+- [Frontend, API endpoint recipes and internationalization](docs/development/frontend-api.md)
+- [Database migrations, RLS, background jobs and Gemini](docs/development/database-jobs-ai.md)
+- [Local development, configuration, testing, deployment and troubleshooting](docs/development/operations.md)
+- [Complete example: adding wardrobe reminders, with a development checklist](docs/development/feature-example.md)
+
+The example is documentation only. Existing account data must remain untouched during development demonstrations; generating AI tasks can write records even when a result has not been explicitly saved. Use mocked browser scenarios or an explicitly isolated database for data-writing tests.
