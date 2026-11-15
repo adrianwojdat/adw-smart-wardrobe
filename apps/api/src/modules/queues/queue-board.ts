@@ -77,7 +77,7 @@ export async function mountQueueBoard(
     options: {
       uiConfig: {
         boardTitle: 'Smart Wardrobe · Kolejki',
-        miscLinks: [{ text: 'Sterowanie kolejkami', url: '/api/admin/queue-control' }],
+        miscLinks: [{ text: 'Queue controls', url: '/api/admin/queue-control' }],
         locale: { lng: 'pl' },
         hideRedisDetails: true,
         hideDocsLink: true,

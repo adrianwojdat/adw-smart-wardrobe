@@ -6,6 +6,8 @@ describe('English-first language policy', () => {
   it('reports Polish technical prose, including text without accented letters', () => {
     expect(isLikelyPolish('Nie można zapisać danych użytkownika.')).toBe(true);
     expect(isLikelyPolish('Dodano pliki oraz pytania ankiety')).toBe(true);
+    expect(isLikelyPolish('Nie znaleziono zadania Gemini.')).toBe(true);
+    expect(isLikelyPolish('Zapisano baseline Knip.')).toBe(true);
     expect(isLikelyPolish('Struktura src i publiczne granice feature: poprawne.')).toBe(true);
   });
 

@@ -4,7 +4,7 @@ import { GeminiProviderError } from './errors.js';
 
 export function decryptGeminiKey(ciphertext: string, secret: string): string {
   if (!/^[a-f0-9]{64}$/.test(secret))
-    throw new GeminiProviderError('encryption_error', 'Brak konfiguracji szyfrowania.');
+    throw new GeminiProviderError('encryption_error', 'Encryption is not configured.');
 
   const [version, ivPart, tagPart, dataPart] = ciphertext.split('.');
 

@@ -25,7 +25,7 @@ export function registerGeminiTaskRoutes(
     async (req, reply) => {
       const { sb, user } = await session.load(req, reply);
 
-      if (!queue) throw new HttpError(503, 'Kolejka Gemini nie jest skonfigurowana.');
+      if (!queue) throw new HttpError(503, 'The Gemini queue is not configured.');
       if (!config.GEMINI_ENCRYPTION_KEY)
         throw new HttpError(
           503,
@@ -36,8 +36,8 @@ export function registerGeminiTaskRoutes(
       const configured = await sb.from('gemini_credentials').select('model').maybeSingle();
 
       if (configured.error || !configured.data)
-        throw new HttpError(400, 'Najpierw zapisz klucz Gemini.');
-      if (!configured.data.model) throw new HttpError(400, 'Wybierz model Gemini w ustawieniach.');
+        throw new HttpError(400, 'Save a Gemini API key first.');
+      if (!configured.data.model) throw new HttpError(400, 'Select a Gemini model in settings.');
 
       const access = await sb.rpc('has_wardrobe_access', { w: body.wardrobe_id });
 
@@ -92,7 +92,7 @@ export function registerGeminiTaskRoutes(
   app.post('/api/gemini/tasks', async (req, reply) => {
     const { sb, user } = await session.load(req, reply);
 
-    if (!queue) throw new HttpError(503, 'Kolejka Gemini nie jest skonfigurowana.');
+    if (!queue) throw new HttpError(503, 'The Gemini queue is not configured.');
 
     const body = z.object({ kind: z.enum(['connection_test', 'list_models']) }).parse(req.body);
 
@@ -105,7 +105,7 @@ export function registerGeminiTaskRoutes(
     const configured = await sb.from('gemini_credentials').select('model').maybeSingle();
 
     if (configured.error || !configured.data)
-      throw new HttpError(400, 'Najpierw zapisz klucz Gemini.');
+      throw new HttpError(400, 'Save a Gemini API key first.');
     if (body.kind === 'connection_test' && !configured.data.model)
       throw new HttpError(400, 'Select a Gemini model before testing the connection.');
 

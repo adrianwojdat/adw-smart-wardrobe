@@ -46,7 +46,7 @@ export async function callGemini(
   const random = options.random ?? Math.random;
 
   for (let attempt = 0; ; attempt++) {
-    if (options.signal.aborted) throw new GeminiProviderError('cancelled', 'Zadanie anulowano.');
+    if (options.signal.aborted) throw new GeminiProviderError('cancelled', 'Task cancelled.');
     await waitForGeminiSlot(options.redis, options.rateKey, options.rpm, options.signal, random);
 
     let response: Response;
@@ -61,7 +61,7 @@ export async function callGemini(
         signal: AbortSignal.any([options.signal, AbortSignal.timeout(45000)]),
       });
     } catch (error) {
-      if (options.signal.aborted) throw new GeminiProviderError('cancelled', 'Zadanie anulowano.');
+      if (options.signal.aborted) throw new GeminiProviderError('cancelled', 'Task cancelled.');
       if (error instanceof Error && error.name === 'TimeoutError')
         throw new GeminiProviderError(
           'timeout',
@@ -116,10 +116,7 @@ export async function runGeminiTask(options: GeminiRequestOptions): Promise<unkn
 
   if (options.kind === 'outfit_recommendation' || options.kind === 'travel_packing') {
     if (!options.prompt)
-      throw new GeminiProviderError(
-        'invalid_response',
-        'Brakuje danych do wygenerowania stylizacji.',
-      );
+      throw new GeminiProviderError('invalid_response', 'Outfit generation input is missing.');
 
     const response = await callGemini(
       options,
@@ -227,7 +224,7 @@ export async function runGeminiTask(options: GeminiRequestOptions): Promise<unkn
 
 function delay(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (signal.aborted) return reject(new GeminiProviderError('cancelled', 'Zadanie anulowano.'));
+    if (signal.aborted) return reject(new GeminiProviderError('cancelled', 'Task cancelled.'));
 
     const timer = setTimeout(
       () => {
@@ -238,7 +235,7 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
     );
     const abort = () => {
       clearTimeout(timer);
-      reject(new GeminiProviderError('cancelled', 'Zadanie anulowano.'));
+      reject(new GeminiProviderError('cancelled', 'Task cancelled.'));
     };
 
     signal.addEventListener('abort', abort, { once: true });

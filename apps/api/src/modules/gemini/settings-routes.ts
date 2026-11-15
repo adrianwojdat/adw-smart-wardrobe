@@ -88,13 +88,13 @@ export function registerGeminiSettingsRoutes(
       );
       const data = updated.rows[0] as { key_hint: string; model: string } | undefined;
 
-      if (!data) throw new HttpError(400, 'Najpierw zapisz klucz Gemini.');
+      if (!data) throw new HttpError(400, 'Save a Gemini API key first.');
 
       return { configured: true, key_hint: data.key_hint, model: data.model };
     } catch (error) {
       if (error instanceof HttpError) throw error;
       if ((error as { code?: string }).code === 'P0002')
-        throw new HttpError(400, 'Najpierw zapisz klucz Gemini.');
+        throw new HttpError(400, 'Save a Gemini API key first.');
       requestError(error as { code?: string; message?: string });
     }
   });

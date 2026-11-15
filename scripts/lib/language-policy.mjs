@@ -4,6 +4,30 @@ export function isLikelyPolish(text) {
   const obvious =
     /\b(?:nie udało|zaloguj się|brak danych|nie można|spróbuj ponownie|lista na wyjazd|kod organizujemy|dane użytkownika)\b/iu;
   const markers = new Set([
+    'anulowano',
+    'zadanie',
+    'zadania',
+    'kolejka',
+    'kolejce',
+    'kolejkami',
+    'sterowanie',
+    'skonfigurowano',
+    'skonfigurowana',
+    'jest',
+    'najpierw',
+    'zapisz',
+    'klucz',
+    'wybierz',
+    'ustawieniach',
+    'przekroczono',
+    'czas',
+    'oczekiwania',
+    'maksymalny',
+    'konfiguracji',
+    'szyfrowania',
+    'brakuje',
+    'wygenerowania',
+    'stylizacji',
     'struktura',
     'publiczne',
     'granice',
@@ -42,6 +66,10 @@ export function isLikelyPolish(text) {
   const accented = words.filter((word) => /[ąćęłńóśźż]/u.test(word)).length;
 
   return (
+    (words.length >= 2 &&
+      words.some((word) =>
+        ['zapisano', 'anulowano', 'przekroczono', 'skonfigurowano'].includes(word),
+      )) ||
     obvious.test(text) ||
     marked >= 2 ||
     (accented >= 2 && words.length >= 3) ||

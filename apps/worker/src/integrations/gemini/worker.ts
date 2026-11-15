@@ -76,22 +76,16 @@ export async function createGeminiWorker({
 
       try {
         if (remainingMs <= 0)
-          throw new GeminiProviderError(
-            'timeout',
-            'Przekroczono czas oczekiwania w kolejce Gemini.',
-          );
+          throw new GeminiProviderError('timeout', 'Gemini queue wait time exceeded.');
         if (!task.encrypted_key)
-          throw new GeminiProviderError('invalid_key', 'Zapisz klucz Gemini w ustawieniach.');
+          throw new GeminiProviderError('invalid_key', 'Save a Gemini API key in settings.');
         if (!config.GEMINI_ENCRYPTION_KEY)
           throw new GeminiProviderError(
             'encryption_error',
             'Gemini key encryption has not been configured by the administrator.',
           );
         if (task.kind !== 'list_models' && !task.model)
-          throw new GeminiProviderError(
-            'model_unavailable',
-            'Wybierz model Gemini w ustawieniach.',
-          );
+          throw new GeminiProviderError('model_unavailable', 'Select a Gemini model in settings.');
 
         const claimed = await pool.query(
           `update public.gemini_tasks set status='running',started_at=coalesce(started_at,now()),updated_at=now()
@@ -186,9 +180,9 @@ export async function createGeminiWorker({
             ? 'timeout'
             : (providerError?.code ?? 'provider_unavailable');
         const message = cancelled
-          ? 'Zadanie anulowano.'
+          ? 'Task cancelled.'
           : timedOut
-            ? 'Przekroczono maksymalny czas zadania Gemini.'
+            ? 'Gemini task timeout exceeded.'
             : (providerError?.message ?? 'Gemini is temporarily unavailable.');
 
         await pool.query(

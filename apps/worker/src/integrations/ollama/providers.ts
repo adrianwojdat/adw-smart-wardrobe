@@ -13,7 +13,7 @@ function config() {
   const base = process.env.OLLAMA_BASE_URL,
     model = process.env.OLLAMA_VISION_MODEL;
 
-  if (!base || !model) throw new AiUnavailable('Nie skonfigurowano komputera AI.');
+  if (!base || !model) throw new AiUnavailable('The AI host is not configured.');
 
   const url = new URL(base);
 

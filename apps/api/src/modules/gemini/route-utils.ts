@@ -12,14 +12,14 @@ export function requestError(error: { code?: string | null; message?: string | n
     throw new HttpError(429, 'The Gemini queue is full. Try again later.');
   if (error.code === '42501')
     throw new HttpError(403, 'You do not have permission to configure Gemini.');
-  if (error.code === 'P0002') throw new HttpError(404, 'Nie znaleziono zadania Gemini.');
+  if (error.code === 'P0002') throw new HttpError(404, 'Gemini task not found.');
   throw new HttpError(400, 'Failed to save the Gemini configuration.');
 }
 
 export async function readTask(sb: Awaited<ReturnType<SessionManager['load']>>['sb'], id: string) {
   const result = await sb.from('gemini_tasks').select(safeTaskColumns).eq('id', id).maybeSingle();
 
-  if (result.error || !result.data) throw new HttpError(404, 'Nie znaleziono zadania Gemini.');
+  if (result.error || !result.data) throw new HttpError(404, 'Gemini task not found.');
 
   return storedTaskSchema.parse(result.data);
 }

@@ -60,7 +60,7 @@ if (process.argv.includes('--write-baseline')) {
 
   await writeFile(baselinePath, `${JSON.stringify({ schemaVersion: 1, issues }, null, 2)}\n`);
   console.log(
-    `Zapisano baseline Knip: ${count(current)} issue(s), ${JSON.stringify(breakdown(current))}.`,
+    `Saved Knip baseline: ${count(current)} issue(s), ${JSON.stringify(breakdown(current))}.`,
   );
   process.exit(0);
 }

@@ -39,7 +39,7 @@ export async function waitForGeminiSlot(
   random = Math.random,
 ): Promise<void> {
   while (true) {
-    if (signal.aborted) throw new GeminiProviderError('cancelled', 'Zadanie anulowano.');
+    if (signal.aborted) throw new GeminiProviderError('cancelled', 'Task cancelled.');
 
     const delay = Number(
       await redis.eval(
@@ -55,7 +55,7 @@ export async function waitForGeminiSlot(
     if (delay <= 0) return;
     await new Promise<void>((resolve, reject) => {
       if (signal.aborted) {
-        reject(new GeminiProviderError('cancelled', 'Zadanie anulowano.'));
+        reject(new GeminiProviderError('cancelled', 'Task cancelled.'));
 
         return;
       }
@@ -69,7 +69,7 @@ export async function waitForGeminiSlot(
       );
       const abort = () => {
         clearTimeout(timer);
-        reject(new GeminiProviderError('cancelled', 'Zadanie anulowano.'));
+        reject(new GeminiProviderError('cancelled', 'Task cancelled.'));
       };
 
       signal.addEventListener('abort', abort, { once: true });

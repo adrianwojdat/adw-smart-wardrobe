@@ -3,7 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 
 export class JobCancelled extends UnrecoverableError {
   constructor() {
-    super('Anulowano zadanie.');
+    super('Job cancelled.');
   }
 }
 
