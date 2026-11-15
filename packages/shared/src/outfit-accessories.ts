@@ -1,18 +1,24 @@
-import type { Garment } from './index.js';
 import { beltCompatible } from './accessories.js';
-import { fold } from './outfit-engine.js';
+import type { Garment } from './garment.js';
 import { colorFamily } from './outfit-colors.js';
-import { styleFamily, type Decision } from './outfit-scoring.js';
+import type { Decision } from './outfit-decision.js';
+import { styleFamily } from './outfit-style.js';
+import { fold } from './outfit-text.js';
+
 export function beltEvidence(core: Garment[], belt: Garment): Decision {
   const pants = core.find((g) => g.category === 'bottoms');
   const no = { rule: 'accessory.belt', garment_ids: [belt.id], value: 0 };
+
   if (!pants || belt.wardrobe_id !== pants.wardrobe_id || !beltCompatible(pants)) return no;
+
   const construction = fold(`${pants.subcategory} ${pants.name} ${pants.notes}`);
   const loops =
     /szlufk|belt loops/.test(construction) &&
     !/bez szluf|brak szluf|nie ma szluf|no belt loops/.test(construction);
   const shorts = /szort|short|krotkie/.test(construction);
+
   if ((shorts && !loops) || (!loops && !/chino|jeans|dzins/.test(construction))) return no;
+
   const shoe = core.find((g) => g.category === 'shoes'),
     c = colorFamily(belt.primary_color);
   const sameShoe =
@@ -27,6 +33,7 @@ export function beltEvidence(core: Garment[], belt: Garment): Decision {
     (samePants ? 2 : 0) +
     (style && style === context ? 1 : 0) -
     (context === 'formal' && style === 'sport' ? 6 : 0);
+
   return {
     ...no,
     garment_ids: [pants.id, belt.id, ...(sameShoe && shoe ? [shoe.id] : [])],
@@ -34,12 +41,13 @@ export function beltEvidence(core: Garment[], belt: Garment): Decision {
     ...(benefit >= 2
       ? {
           reason: sameShoe
-            ? 'Pasek współgra kolorem z obuwiem.'
-            : 'Pasek pasuje kolorem do dołu zestawu.',
+            ? 'The belt coordinates with the footwear color.'
+            : 'The belt matches the bottom garment color.',
         }
       : {}),
   };
 }
+
 export function beltCandidates(core: Garment[], available: Garment[]) {
   return available.filter(
     (g) =>

@@ -1,0 +1,48 @@
+export const styleIdentities = [
+  'minimalist',
+  'classic',
+  'streetwear',
+  'preppy',
+  'scandinavian',
+  'boho',
+  'workwear',
+  'sporty',
+  'romantic',
+  'avant_garde',
+] as const;
+export const styleColors = {
+  black: '#202020',
+  white: '#ffffff',
+  navy: '#223451',
+  gray: '#858990',
+  beige: '#d6c7aa',
+  brown: '#795548',
+  olive: '#727c46',
+  green: '#337254',
+  blue: '#4b82ba',
+  red: '#b84040',
+  burgundy: '#772f46',
+  pink: '#d49cae',
+  purple: '#85618b',
+  yellow: '#e5c24c',
+  orange: '#ce803b',
+} as const;
+export const styleColorIds = [
+  'black',
+  'white',
+  'navy',
+  'gray',
+  'beige',
+  'brown',
+  'olive',
+  'green',
+  'blue',
+  'red',
+  'burgundy',
+  'pink',
+  'purple',
+  'yellow',
+  'orange',
+] as const;
+export const preferenceDimensions = ['styles', 'colors', 'fits'] as const;
+export const preferenceStrengths = ['gentle', 'balanced', 'strong'] as const;

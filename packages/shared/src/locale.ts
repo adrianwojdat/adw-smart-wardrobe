@@ -1,10 +1,11 @@
 export const appLocale = {
   code: 'pl-PL',
-  language: 'polski',
+  language: 'Polish',
   temporaryName: 'Ubranie',
   languageReview: 'Wynik wymaga weryfikacji językowej.',
 } as const;
-export const aiLanguageInstruction = `Active application locale: ${appLocale.code}. Wszystkie nazwy, kolory, opisy, style, uzasadnienia, uwagi i instrukcje generuj wyłącznie w języku ${appLocale.language}. Wewnętrzne klucze JSON i wartości enum pozostaw bez zmian. Nie tłumacz marek, identyfikatorów ani dosłownie przepisanego tekstu metki.`;
+export const aiLanguageInstruction = `Active content locale: ${appLocale.code}. Generate garment names, colors, descriptions, styles, rationales, notes and instructions in ${appLocale.language}. Keep internal JSON keys and enum values unchanged. Do not translate brands, identifiers or verbatim care-label text.`;
+
 // Controlled nouns/adjectives avoid copying an English model name into the catalog.
 const nouns: Record<string, [string, number]> = {
   'koszulka polo': ['Koszulka polo', 1],
@@ -74,16 +75,20 @@ const colors: Record<string, string[]> = {
   cream: ['kremowy', 'kremowa', 'kremowe', 'kremowe'],
 };
 const key = (s: string) => s.trim().toLocaleLowerCase(appLocale.code);
+
 function colorForms(value: string) {
   const v = key(value);
+
   return (
     colors[v === 'gray' ? 'grey' : v === 'navy blue' ? 'navy' : v] ??
     Object.values(colors).find((forms) => forms.includes(v))
   );
 }
+
 export function polishColor(value: string): string | undefined {
   return colorForms(value)?.[0];
 }
+
 export function polishGarmentName(s: {
   name?: string;
   category?: string;
@@ -94,6 +99,7 @@ export function polishGarmentName(s: {
   const detected = nouns[key(s.subcategory ?? '')] ?? tokens.map((t) => nouns[t]).find(Boolean);
   const [noun, gender] = detected ?? fallbacks[s.category ?? ''] ?? ['Ubranie', 2];
   const adjective = colorForms(s.primary_color ?? '')?.[gender];
+
   return adjective
     ? adjective.charAt(0).toLocaleUpperCase(appLocale.code) +
         adjective.slice(1) +
@@ -101,9 +107,11 @@ export function polishGarmentName(s: {
         noun.toLocaleLowerCase(appLocale.code)
     : noun;
 }
+
 export function polishSubcategory(value: string): string | undefined {
   return nouns[key(value)]?.[0];
 }
+
 const styles: Record<string, string> = {
   casual: 'Na co dzień',
   'smart casual': 'Swobodna elegancja',
@@ -119,7 +127,9 @@ const styles: Record<string, string> = {
   'na co dzień': 'Na co dzień',
   'swobodna elegancja': 'Swobodna elegancja',
 };
+
 export const polishStyle = (value: string) => styles[key(value)];
+
 // Reject obvious English prose rather than present untranslated generated observations.
 export function localizedAiText(value: string): string {
   return /\b(the|this|with|without|uncertain|exact|fabric|composition|specific|identification|visible|unknown|cannot|wash|washing|iron|dry|color|colour|brand|garment|size|material|label|readable|unreadable|check|verify|not|and|or|is|are)\b/i.test(

@@ -1,138 +1,93 @@
 export * from './accessories.js';
+export * from './vocabulary.js';
+export * from './garment.js';
 export * from './warmth.js';
+export * from './readiness.js';
+export * from './style-profile.js';
+export * from './gemini.js';
+import type { GeminiSettings, GeminiTask, OutfitRecommendationRequest } from './gemini.js';
+import { savedOutfitMissingItemSchema } from './gemini.js';
+import type { StyleProfile, StyleProfileUpdate } from './style-profile.js';
 import { deriveWarmth } from './warmth.js';
+
 export * from './locale.js';
 import { z } from 'zod';
-export const uuid = z.uuid();
-export const cleanliness = ['clean', 'worn', 'dirty', 'washing', 'drying', 'ironing'] as const;
-export const cleanlinessLabels: Record<(typeof cleanliness)[number], string> = {
-  clean: 'Czyste',
-  worn: 'Noszone',
-  dirty: 'Do prania',
-  washing: 'W praniu',
-  drying: 'Suszenie',
-  ironing: 'Do prasowania',
-};
-export const categories = [
-  'tops',
-  'bottoms',
-  'dresses',
-  'outerwear',
-  'shoes',
-  'accessories',
+
+import type { Garment, GarmentInput } from './garment.js';
+import { garmentInput } from './garment.js';
+import { categoryLabels, occasionLabels, occasions, seasonLabels, uuid } from './vocabulary.js';
+
+export const customPropertyTypes = [
+  'text',
+  'number',
+  'currency',
+  'date',
+  'select',
+  'multi_select',
+  'boolean',
 ] as const;
-export const categoryLabels: Record<(typeof categories)[number], string> = {
-  tops: 'Góra',
-  bottoms: 'Spodnie i spódnice',
-  dresses: 'Sukienki',
-  outerwear: 'Okrycia wierzchnie',
-  shoes: 'Obuwie',
-  accessories: 'Dodatki',
-};
-export const seasons = ['spring', 'summer', 'autumn', 'winter'] as const;
-export const seasonLabels = { spring: 'Wiosna', summer: 'Lato', autumn: 'Jesień', winter: 'Zima' };
-export const occasions = ['office', 'everyday', 'date', 'evening', 'weekend', 'travel'] as const;
-export const occasionLabels = {
-  office: 'Do biura',
-  everyday: 'Na co dzień',
-  date: 'Na randkę',
-  evening: 'Na wieczór',
-  weekend: 'Na weekend',
-  travel: 'W podróż',
-};
+export const customPropertyOptionSchema = z.object({
+  id: z.uuid(),
+  property_id: z.uuid(),
+  wardrobe_id: z.uuid(),
+  label: z.string(),
+  sort_order: z.number().int(),
+  created_at: z.string(),
+});
+export const customPropertyCreateSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  type: z.enum(customPropertyTypes),
+  sort_order: z.number().int().min(0).default(0),
+  visible: z.boolean().default(true),
+});
+export const customPropertyPatchSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    sort_order: z.number().int().min(0).optional(),
+    visible: z.boolean().optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0);
+export const customPropertyDefinitionSchema = z.object({
+  id: z.uuid(),
+  wardrobe_id: z.uuid(),
+  name: z.string().trim().min(1).max(80),
+  type: z.enum(customPropertyTypes),
+  sort_order: z.number().int().min(0),
+  visible: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  garment_property_options: z.array(customPropertyOptionSchema).default([]),
+});
+export const customPropertyOptionCreateSchema = z
+  .object({ label: z.string().trim().min(1).max(120) })
+  .strict();
+export const customPropertyValueSchema = z.object({
+  garment_id: z.uuid(),
+  property_id: z.uuid(),
+  wardrobe_id: z.uuid(),
+  value: z.unknown(),
+  updated_at: z.string(),
+});
+export type CustomPropertyType = (typeof customPropertyTypes)[number];
+export type CustomPropertyDefinition = z.infer<typeof customPropertyDefinitionSchema>;
+export type CustomPropertyValue = z.infer<typeof customPropertyValueSchema>;
+
 const short = z.string().trim().max(120);
+
 export const registerSchema = z.object({
   email: z.email().max(254),
-  password: z.string().min(12, 'Hasło musi mieć co najmniej 12 znaków').max(128),
+  password: z.string().min(12, 'The password must contain at least 12 characters').max(128),
   name: short.min(1),
 });
 export const loginSchema = registerSchema
   .pick({ email: true, password: true })
-  .extend({ password: z.string().min(1).max(128) });
+  .extend({ password: z.string().min(1).max(128), rememberMe: z.boolean().optional() });
 export const wardrobeInput = z.object({
   name: short.min(1),
   kind: z.enum(['private', 'family']).default('private'),
 });
-export const garmentInput = z.object({
-  wardrobe_id: uuid,
-  name: short.optional(),
-  category: z.enum(categories),
-  subcategory: short.default(''),
-  pattern: short.optional(),
-  brand: short.default(''),
-  size: short.default(''),
-  primary_color: short.default(''),
-  secondary_color: short.default(''),
-  material: z.string().trim().max(1000).default(''),
-  material_source: z.enum(['user', 'label', 'unknown']).default('unknown'),
-  seasons: z.array(z.enum(seasons)).max(4).default([]),
-  warmth: z.number().int().min(1).max(5).default(3),
-  warmth_manual: z.boolean().optional(),
-  thickness: z.enum(['thin', 'medium', 'thick']).default('medium'),
-  style: short.default(''),
-  occasions: z.array(z.enum(occasions)).max(6).default([]),
-  cleanliness: z.enum(cleanliness).default('clean'),
-  favorite: z.boolean().default(false),
-  archived: z.boolean().default(false),
-  notes: z.string().trim().max(2000).default(''),
-});
-// PATCH must preserve absent keys: Zod defaults must not erase unrelated metadata.
-export const garmentPatch = garmentInput.partial().extend({
-  subcategory: garmentInput.shape.subcategory.removeDefault().optional(),
-  brand: garmentInput.shape.brand.removeDefault().optional(),
-  size: garmentInput.shape.size.removeDefault().optional(),
-  primary_color: garmentInput.shape.primary_color.removeDefault().optional(),
-  secondary_color: garmentInput.shape.secondary_color.removeDefault().optional(),
-  material: garmentInput.shape.material.removeDefault().optional(),
-  material_source: garmentInput.shape.material_source.removeDefault().optional(),
-  seasons: garmentInput.shape.seasons.removeDefault().optional(),
-  warmth: garmentInput.shape.warmth.removeDefault().optional(),
-  thickness: garmentInput.shape.thickness.removeDefault().optional(),
-  style: garmentInput.shape.style.removeDefault().optional(),
-  occasions: garmentInput.shape.occasions.removeDefault().optional(),
-  cleanliness: garmentInput.shape.cleanliness.removeDefault().optional(),
-  favorite: garmentInput.shape.favorite.removeDefault().optional(),
-  archived: garmentInput.shape.archived.removeDefault().optional(),
-  notes: garmentInput.shape.notes.removeDefault().optional(),
-});
 export const aiPreferencesSchema = z.object({ ai_overwrite_metadata: z.boolean() }).strict();
-export type GarmentInput = z.infer<typeof garmentInput>;
-export const imageSchema = z.object({
-  id: uuid,
-  garment_id: uuid,
-  wardrobe_id: uuid,
-  path: z.string(),
-  kind: z.enum(['garment', 'label']),
-  width: z.number(),
-  height: z.number(),
-  created_at: z.string(),
-  original_path: z.string(),
-  original_mime: z.string(),
-  cutout_path: z.string().nullable(),
-  catalog_path: z.string().nullable(),
-  thumbnail_path: z.string().nullable(),
-  revision: z.number(),
-  rotation: z.number().nullable(),
-  process_status: z.enum(['queued', 'processing', 'completed', 'failed', 'cancelled']),
-  stage: z.string(),
-  pipeline_version: z.string().nullable(),
-  processing_error: z.string().nullable(),
-  orientation: z.unknown().nullable(),
-  analysis: z.unknown().nullable(),
-});
-export const garmentSchema = garmentInput.extend({
-  name: short.min(1),
-  name_source: z.enum(['temporary', 'ai', 'manual']).default('manual'),
-  warmth_manual: z.boolean().default(false),
-  pattern: short.default(''),
-  id: uuid,
-  owner_id: uuid,
-  created_at: z.string(),
-  updated_at: z.string(),
-  garment_images: z.array(imageSchema).default([]),
-});
-export type Garment = z.infer<typeof garmentSchema>;
-export type GarmentImage = z.infer<typeof imageSchema>;
 export const wardrobeSchema = wardrobeInput.extend({
   id: uuid,
   owner_id: uuid,
@@ -169,18 +124,32 @@ export const outfitInput = z.object({
   occasion: z.enum(occasions),
   garment_ids: z.array(uuid).min(1).max(12),
   temperature: z.number().min(-40).max(55).optional(),
+  rationale: z.string().trim().max(500).optional(),
+  wearing_tips: z.string().trim().max(300).optional(),
+  missing_items: z.array(savedOutfitMissingItemSchema).max(2).optional(),
 });
 export type OutfitInput = z.infer<typeof outfitInput>;
 export const outfitSchema = outfitInput.extend({
+  temperature: z.number().min(-40).max(55).nullable().optional(),
   id: uuid,
   created_by: uuid,
   created_at: z.string(),
+  rationale: z.string().nullable().default(null),
+  wearing_tips: z.string().nullable().default(null),
+  missing_items: z.array(savedOutfitMissingItemSchema).default([]),
 });
 export type Outfit = z.infer<typeof outfitSchema>;
 export { generateOutfits as recommend } from './outfit-engine.js';
 export * from './outfit-engine.js';
 export interface ApiContract {
+  '/api/gemini/settings': { GET: { response: GeminiSettings } };
+  '/api/gemini/tasks': { POST: { response: GeminiTask } };
+  '/api/recommendations': { POST: { body: OutfitRecommendationRequest; response: GeminiTask } };
   '/api/auth/me': { GET: { response: Me } };
+  '/api/profile/style': {
+    GET: { response: StyleProfile };
+    PATCH: { body: StyleProfileUpdate; response: StyleProfile };
+  };
   '/api/auth/login': { POST: { body: z.infer<typeof loginSchema>; response: Me } };
   '/api/auth/register': {
     POST: { body: z.infer<typeof registerSchema>; response: { confirmationRequired: boolean } };
@@ -244,45 +213,58 @@ export const orientationSchema = z.object({
 });
 
 import {
+  localizedAiText,
   polishColor,
   polishGarmentName,
-  polishSubcategory,
   polishStyle,
-  localizedAiText,
+  polishSubcategory,
 } from './locale.js';
+
 export function localizeAnalysis(input: AiAnalysis): AiAnalysis {
   const result = structuredClone(input),
     s = result.suggestions;
+
   if (s.primary_color) s.primary_color = polishColor(s.primary_color);
   if (s.secondary_color) s.secondary_color = polishColor(s.secondary_color);
   if (s.style) s.style = polishStyle(s.style);
   if (s.name || s.category)
     s.name = polishGarmentName({ ...input.suggestions, primary_color: s.primary_color });
   if (s.subcategory) s.subcategory = polishSubcategory(s.subcategory);
+
   if (result.source === 'photo') {
     const warmth = deriveWarmth(
       s.category ?? '',
       input.suggestions.subcategory || input.suggestions.name,
     );
+
     if (warmth !== undefined) s.warmth = warmth;
     else delete s.warmth;
   }
+
   result.uncertainties = result.uncertainties.map(localizedAiText);
   if (result.care) result.care = result.care.map(localizedAiText);
+
   // Brand, product identifiers, material read from label, and verbatim OCR text are preserved.
   return result;
 }
+
 export function aiValueLabel(field: string, value: unknown): string {
   const dictionaries: Record<string, Record<string, string>> = {
     category: categoryLabels,
     seasons: seasonLabels,
     occasions: occasionLabels,
-    thickness: { thin: 'Cienkie', medium: 'Średnie', thick: 'Grube' },
-    material_source: { user: 'Wpisane ręcznie', label: 'Z metki', unknown: 'Nieznane' },
+    thickness: { thin: 'Thin', medium: 'Medium', thick: 'Thick' },
+    material_source: { user: 'Entered manually', label: 'From the care label', unknown: 'Unknown' },
   };
+
   return Array.isArray(value)
     ? value.map((v) => aiValueLabel(field, v)).join(', ')
     : (dictionaries[field]?.[String(value)] ?? String(value));
 }
 
 export * from './outfit-scoring.js';
+
+export * from './travel-packing.js';
+
+export * from './travel-packing/catalog.js';
+export * from './travel-packing/rules.js';

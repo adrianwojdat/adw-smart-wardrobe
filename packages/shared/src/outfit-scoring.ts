@@ -1,7 +1,10 @@
+import type { Garment } from './garment.js';
 import { beltEvidence } from './outfit-accessories.js';
-import { shoeDecision } from './outfit-shoes.js';
 import { paletteValue, patternValue } from './outfit-colors.js';
-import type { Garment } from './index.js';
+import type { Decision } from './outfit-decision.js';
+import { shoeDecision } from './outfit-shoes.js';
+import { styleFamily } from './outfit-style.js';
+
 export const scoreWeights = {
   style: 20,
   occasion: 15,
@@ -13,22 +16,9 @@ export const scoreWeights = {
   diversity: 8,
 };
 export type Weights = typeof scoreWeights;
-export interface Decision {
-  rule: string;
-  garment_ids: string[];
-  value: number;
-  reason?: string;
-}
-const normalize = (s: string) =>
-  s.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/ł/g, 'l');
-export function styleFamily(s: string): string | undefined {
-  const text = normalize(s);
-  if (/smart/.test(text)) return 'smart';
-  if (/formal|elegan|business|biznes/.test(text)) return 'formal';
-  if (/sport|athlet/.test(text)) return 'sport';
-  if (/casual|codzien|swobod/.test(text)) return 'casual';
-  return undefined;
-}
+export type { Decision } from './outfit-decision.js';
+export { styleFamily } from './outfit-style.js';
+
 export function styleDecision(items: Garment[]): Decision {
   const styles = items.map((g) => styleFamily(g.style));
   const known = styles.filter((s): s is string => !!s);
@@ -36,15 +26,17 @@ export function styleDecision(items: Garment[]): Decision {
   const unique = new Set(known);
   const affinity =
     unique.size === 1 ? 1 : unique.has('sport') && unique.has('formal') ? 0.25 : 0.65;
+
   return {
     rule: 'style.compatibility',
     garment_ids: items.map((g) => g.id),
     value: known.length ? affinity * coverage : 0.25,
     ...(known.length >= 2 && unique.size === 1
-      ? { reason: 'Rozpoznane style ubrań są zgodne.' }
+      ? { reason: 'The recognized garment styles are compatible.' }
       : {}),
   };
 }
+
 export function evaluateOutfit(
   items: Garment[],
   occasion: string,
@@ -64,33 +56,39 @@ export function evaluateOutfit(
           0,
         ) / clothes.length,
       ...(clothes.every((g) => g.occasions.includes(occasion as never))
-        ? { reason: 'Wszystkie ubrania mają oznaczenie wybranej okazji.' }
+        ? { reason: 'All garments are tagged for the selected occasion.' }
         : {}),
     },
     {
       rule: 'thermal.heuristic',
       garment_ids: clothes.map((g) => g.id),
       value: clothes.every((g) => g.subcategory) ? 0.8 : 0.4,
-      reason: `Układ warstw przeszedł reguły dla ${temperature}°C; odczuwalny komfort zależy od warunków.`,
+      reason: `The layering passed the rules for ${temperature}°C; perceived comfort depends on conditions.`,
     },
   ];
   const palette = paletteValue(clothes);
+
   trace.push({
     rule: 'color.palette',
     garment_ids: clothes.map((g) => g.id),
     value: palette.value,
-    ...(palette.neutral ? { reason: 'Rozpoznane kolory tworzą neutralną paletę.' } : {}),
+    ...(palette.neutral ? { reason: 'The recognized colors form a neutral palette.' } : {}),
   });
   trace.push({
     rule: 'pattern.combination',
     garment_ids: clothes.map((g) => g.id),
     value: patternValue(clothes),
   });
+
   const footwear = shoeDecision(items, occasion, temperature);
+
   trace.push(footwear);
+
   const belt = items.find((g) => g.category === 'accessories');
   const accessory = belt ? beltEvidence(clothes, belt) : undefined;
+
   if (accessory) trace.push(accessory);
+
   const values = {
     style: trace[0]!.value,
     occasion: trace[1]!.value,
@@ -105,5 +103,6 @@ export function evaluateOutfit(
     (sum, [k, v]) => sum + v * weights[k as keyof Weights],
     0,
   );
+
   return { score, trace, values, complete: items.some((g) => g.category === 'shoes') };
 }
