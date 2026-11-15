@@ -2,27 +2,32 @@ import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { FastifyAdapter } from '@bull-board/fastify';
 import { Queue } from 'bullmq';
-import { Redis } from 'ioredis';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { HttpError } from './session.js';
+import { Redis } from 'ioredis';
+
+import { HttpError } from '../auth/session.js';
+
 export const QUEUE_BOARD_PATH = '/api/admin/queues';
+
 /** Shared guard covers the HTML, static assets and every dashboard API route. */
 export function queueBoardGuard(
   adminIds: string[],
   identify: (req: FastifyRequest, reply: FastifyReply) => Promise<string>,
 ) {
   const allowed = new Set(adminIds);
+
   return async (req: FastifyRequest, reply: FastifyReply) => {
     reply.header('Cache-Control', 'no-store, private');
     if (!allowed.has(await identify(req, reply)))
-      throw new HttpError(403, 'Panel kolejek jest dostępny tylko dla administratora.');
+      throw new HttpError(403, 'The queue dashboard is restricted to administrators.');
     if (!['GET', 'HEAD'].includes(req.method))
       throw new HttpError(
         405,
-        'Panel kolejek służy wyłącznie do podglądu. Ponawiaj zadania na stronie ubrania.',
+        'The queue dashboard is read-only. Retry jobs from the garment page.',
       );
   };
 }
+
 export async function registerQueueBoard(
   app: FastifyInstance,
   redisUrl: string,
@@ -38,8 +43,11 @@ export async function registerQueueBoard(
     maxRetriesPerRequest: 1,
     connectTimeout: 5000,
   });
+
   connection.on('error', () => app.log.warn('Queue dashboard Redis connection unavailable'));
+
   const queues = ['wardrobe', 'wardrobe-ai'].map((name) => new Queue(name, { connection }));
+
   for (const queue of queues)
     queue.on('error', () => app.log.warn('Queue dashboard connection unavailable'));
   app.addHook('onClose', async () => {
@@ -47,8 +55,10 @@ export async function registerQueueBoard(
     connection.disconnect();
   });
   await mountQueueBoard(app, queues, adminIds, identify);
+
   return queues;
 }
+
 /** Mounting is separate from Redis ownership so adapter/auth can be tested offline. */
 export async function mountQueueBoard(
   app: FastifyInstance,
@@ -57,6 +67,7 @@ export async function mountQueueBoard(
   identify: (req: FastifyRequest, reply: FastifyReply) => Promise<string>,
 ) {
   const adapter = new FastifyAdapter();
+
   adapter.setBasePath(QUEUE_BOARD_PATH);
   createBullBoard({
     queues: queues.map(
