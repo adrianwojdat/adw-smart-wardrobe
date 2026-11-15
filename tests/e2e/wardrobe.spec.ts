@@ -1,9 +1,17 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import path from 'node:path';
+
 test('registration → login → wardrobe → upload → catalog → details', async ({ page }, info) => {
+  test.skip(
+    process.env.E2E_ALLOW_WRITES !== '1' || process.env.E2E_ISOLATED_STACK !== '1',
+    'Wymaga jawnej zgody i odizolowanego stacku testowego z cyklem sprzątania.',
+  );
+  await page.addInitScript(() => localStorage.setItem('smart-wardrobe-language', 'pl'));
+
   const suffix = `${Date.now()}-${info.project.name}`;
   const email = `e2e-${suffix}@example.com`;
   const password = 'Smart-Wardrobe-Test-2026!';
+
   await page.goto('/register');
   await page.getByLabel('Jak masz na imię?').fill('Test garderoby');
   await page.getByLabel('Adres email').fill(email);
@@ -19,7 +27,9 @@ test('registration → login → wardrobe → upload → catalog → details', a
   await page.getByRole('button', { name: 'Zaloguj się', exact: true }).click();
   await expect(page).toHaveURL(/dashboard/);
   await page.getByRole('button', { name: 'Utwórz garderobę', exact: true }).first().click();
+
   const dialog = page.getByRole('dialog');
+
   await dialog.getByLabel('Nazwa garderoby').fill('Moja szafa E2E');
   await dialog.getByRole('button', { name: 'Utwórz garderobę', exact: true }).click();
   await expect(dialog).not.toBeVisible();
@@ -46,6 +56,7 @@ test('registration → login → wardrobe → upload → catalog → details', a
     .toBe(true);
 });
 test('public landing and protected routes', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('smart-wardrobe-language', 'pl'));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Mniej szukania/ })).toBeVisible();
   await page.goto('/wardrobe');

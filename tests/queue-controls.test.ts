@@ -1,19 +1,23 @@
-import Fastify from '../apps/api/node_modules/fastify';
-import type { Pool } from '../apps/api/node_modules/pg';
-import type { Queue } from '../apps/api/node_modules/bullmq';
-import { validatorCompiler } from '../apps/api/node_modules/fastify-type-provider-zod';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
-import { registerQueueControls } from '../apps/api/src/queue-controls';
-import { HttpError } from '../apps/api/src/session';
+
+import type { Queue } from '../apps/api/node_modules/bullmq';
+import Fastify from '../apps/api/node_modules/fastify';
+import { validatorCompiler } from '../apps/api/node_modules/fastify-type-provider-zod';
+import type { Pool } from '../apps/api/node_modules/pg';
+import { HttpError } from '../apps/api/src/modules/auth/session.ts';
+import { registerQueueControls } from '../apps/api/src/modules/queues/queue-controls.ts';
+
 const app = Fastify(),
   query = vi.fn(),
   removeWaiting = vi.fn(),
   removeActive = vi.fn();
+
 beforeAll(async () => {
   app.setValidatorCompiler(validatorCompiler);
   app.setErrorHandler((error, _req, reply) =>
     reply.code((error as HttpError).statusCode ?? 400).send({ message: (error as Error).message }),
   );
+
   const queues = [
     {
       name: 'wardrobe-ai',
@@ -23,6 +27,7 @@ beforeAll(async () => {
       }),
     },
   ] as unknown as Queue[];
+
   await registerQueueControls(app, queues, { query } as unknown as Pool, async (req) => {
     if (req.headers['x-test-user'] !== 'admin') throw new HttpError(403, 'forbidden');
   });
@@ -55,12 +60,14 @@ it('cancels durably before removing Redis jobs and leaves locked jobs to coopera
       },
     ],
   });
+
   const response = await app.inject({
     method: 'POST',
     url: '/api/admin/queue-control/cancel',
     headers: { 'x-test-user': 'admin' },
     payload: { queue: 'ai' },
   });
+
   expect(response.statusCode).toBe(200);
   expect(response.json()).toEqual({ cancelled: 2, removed: 1, cleanupPending: 1 });
   expect(query).toHaveBeenCalledWith('select private.cancel_queue_jobs($1) as jobs', ['ai']);
@@ -75,8 +82,9 @@ it('serves confirmation controls without inline scripts', async () => {
     url: '/api/admin/queue-control',
     headers: { 'x-test-user': 'admin' },
   });
+
   expect(response.statusCode).toBe(200);
-  expect(response.body).toContain('Potwierdzam anulowanie');
+  expect(response.body).toContain('I confirm cancellation');
   expect(response.body).toContain('src="/api/admin/queue-control.js"');
   expect(response.headers['cache-control']).toContain('no-store');
 });

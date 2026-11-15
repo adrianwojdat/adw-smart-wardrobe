@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { BATCH_LIMIT, fileError, runUploads } from '../apps/web/src/bulk-queue';
+
+import {
+  BATCH_LIMIT,
+  fileError,
+  runUploads,
+} from '../apps/web/src/features/bulk-upload/lib/bulk-queue.ts';
+
 describe('bulk upload', () => {
   it('allows 200 lightweight uploads with at most three concurrent requests', async () => {
     let active = 0,
       maximum = 0;
     const completed: number[] = [];
+
     await runUploads(
       Array.from({ length: BATCH_LIMIT }, (_, i) => i),
       async (id) => {
@@ -23,6 +30,7 @@ describe('bulk upload', () => {
   it('continues independent files after a handled upload failure', async () => {
     const failures: number[] = [],
       completed: number[] = [];
+
     await runUploads(
       [1, 2, 3, 4],
       async (id) => {
@@ -42,8 +50,8 @@ describe('bulk upload', () => {
     expect(fileError({ type: 'image/jpeg', size: 10 * 1024 * 1024 })).toBeUndefined();
     expect(fileError({ type: 'image/png', size: 1 })).toBeUndefined();
     expect(fileError({ type: 'image/webp', size: 1 })).toBeUndefined();
-    expect(fileError({ type: 'image/jpeg', size: 10 * 1024 * 1024 + 1 })).toMatch('10 MB');
-    expect(fileError({ type: 'text/plain', size: 1 })).toBeTruthy();
-    expect(fileError({ type: 'image/jpeg', size: 0 })).toBeTruthy();
+    expect(fileError({ type: 'image/jpeg', size: 10 * 1024 * 1024 + 1 })).toBe('fileTooLarge');
+    expect(fileError({ type: 'text/plain', size: 1 })).toBe('invalidType');
+    expect(fileError({ type: 'image/jpeg', size: 0 })).toBe('fileEmpty');
   });
 });

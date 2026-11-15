@@ -1,6 +1,9 @@
-import { beforeAll, afterAll, expect, it } from 'vitest';
-import { buildApp } from '../apps/api/src/app';
+import { afterAll, beforeAll, expect, it } from 'vitest';
+
+import { buildApp } from '../apps/api/src/app/app.ts';
+
 let app: Awaited<ReturnType<typeof buildApp>>;
+
 beforeAll(async () => {
   app = await buildApp({
     NODE_ENV: 'test',
@@ -22,7 +25,9 @@ afterAll(async () => {
 it('accepts LAN and localhost with CSRF, reaching body validation without authentication calls', async () => {
   const csrf = await app.inject({ url: '/api/auth/csrf' });
   const token = csrf.json().token;
+
   expect(csrf.headers['set-cookie']).not.toContain('; Secure');
+
   for (const origin of ['http://192.168.0.217:8080', 'http://localhost:8080']) {
     const r = await app.inject({
       method: 'POST',
@@ -31,8 +36,9 @@ it('accepts LAN and localhost with CSRF, reaching body validation without authen
       cookies: { sw_csrf: token },
       payload: {},
     });
+
     expect(r.statusCode).toBe(400);
-    expect(r.json().message).toBe('Sprawdź poprawność wprowadzonych danych.');
+    expect(r.json().message).toBe('Check the submitted input.');
   }
 });
 it('still rejects foreign origins and LAN requests missing CSRF', async () => {
@@ -45,12 +51,15 @@ it('still rejects foreign origins and LAN requests missing CSRF', async () => {
     cookies: { sw_csrf: token },
     payload: {},
   });
+
   expect(foreign.statusCode).toBe(403);
+
   const noCsrf = await app.inject({
     method: 'POST',
     url: '/api/auth/login',
     headers: { origin: 'http://192.168.0.217:8080' },
     payload: {},
   });
+
   expect(noCsrf.statusCode).toBe(403);
 });

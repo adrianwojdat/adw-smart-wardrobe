@@ -1,5 +1,7 @@
 import { expect, it } from 'vitest';
-import { deriveWarmth, localizeAnalysis } from '../packages/shared/src/index';
+
+import { deriveWarmth, localizeAnalysis } from '../packages/shared/src/index.ts';
+
 it.each([
   ['tops', 'T-shirt', 1],
   ['tops', 'top', 1],
@@ -29,13 +31,16 @@ it('replaces visual AI heat guesses with shared rules', () => {
     uncertainties: [],
     suggestions: { category: 'tops', subcategory: 'T-shirt', warmth: 5 },
   });
+
   expect(result.suggestions.warmth).toBe(1);
+
   const accessory = localizeAnalysis({
     source: 'photo',
     confidence: 0.8,
     uncertainties: [],
     suggestions: { category: 'accessories', subcategory: 'Pasek', warmth: 4 },
   });
+
   expect(accessory.suggestions.warmth).toBeUndefined();
 });
 it('uses the newly selected category even when an old subtype has not been edited yet', () => {

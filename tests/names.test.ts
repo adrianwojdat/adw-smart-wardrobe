@@ -1,12 +1,15 @@
-import { it, expect } from 'vitest';
+import { expect, it } from 'vitest';
+
 import {
+  aiValueLabel,
   garmentInput,
   localizeAnalysis,
   polishGarmentName,
-  aiValueLabel,
-} from '../packages/shared/src/index';
+} from '../packages/shared/src/index.ts';
+
 it('accepts missing and blank names on creation without adding a name to unrelated patches', () => {
   const base = { wardrobe_id: '2fd58432-9442-4190-9e2b-e1cab47b7cc7', category: 'tops' };
+
   expect(garmentInput.parse(base).name).toBeUndefined();
   expect(garmentInput.parse({ ...base, name: '   ' }).name).toBe('');
   expect(garmentInput.partial().parse({ brand: 'COS' })).not.toHaveProperty('name');
@@ -34,11 +37,12 @@ it('localizes old/new AI output while preserving brands and verbatim OCR', () =>
     },
   };
   const result = localizeAnalysis(input);
+
   expect(result.suggestions.name).toBe('Czarna marynarka');
   expect(result.suggestions.primary_color).toBe('czarny');
   expect(result.suggestions.brand).toBe('Medicine');
   expect(result.text).toBe(input.text);
   expect(result.uncertainties).toEqual(['Wynik wymaga weryfikacji językowej.']);
   expect(input.suggestions.name).toBe('Black blazer');
-  expect(aiValueLabel('seasons', ['spring', 'summer'])).toBe('Wiosna, Lato');
+  expect(aiValueLabel('seasons', ['spring', 'summer'])).toBe('Spring, Summer');
 });

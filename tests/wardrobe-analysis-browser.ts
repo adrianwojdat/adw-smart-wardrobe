@@ -1,7 +1,10 @@
 /** Exercises the deployed UI with a mocked API; never submits actual AI jobs. */
 import { chromium, expect } from '@playwright/test';
-import { garmentSchema } from '../packages/shared/src/index';
+
+import { garmentSchema } from '../packages/shared/src/index.ts';
+
 const browser = await chromium.launch();
+
 try {
   const page = await browser.newPage({ serviceWorkers: 'block' });
   const id = '11111111-1111-4111-8111-111111111111';
@@ -49,10 +52,12 @@ try {
   const gate = new Promise<void>((resolve) => {
     finish = resolve;
   });
+
   await page.route('**/api/**', async (route) => {
     const req = route.request(),
       path = new URL(req.url()).pathname;
     let data: unknown = [];
+
     if (path === '/api/auth/me') data = { id: owner, email: 'test@example.com', name: 'Test' };
     if (path === '/api/wardrobes')
       data = [
@@ -80,6 +85,7 @@ try {
     if (path === `/api/garments/${garmentId}`) data = garment;
     if (path === '/api/recommendations') data = { source: 'rules', outfits: [] };
     if (path === '/api/auth/csrf') data = { token: 'test' };
+
     if (path === `/api/wardrobes/${id}/analyze`) {
       expect(req.method()).toBe('POST');
       calls++;
@@ -90,13 +96,16 @@ try {
           ? { queued: 12, pending: 3, missing: 1 }
           : { queued: 0, pending: 15, missing: 1 };
     }
+
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) });
   });
   await page.goto('http://localhost:8080/settings');
+
   const button = page.getByRole('button', {
     name: 'Ponów analizę AI wszystkich ubrań',
     exact: true,
   });
+
   await button.click();
   await expect(page.getByRole('button', { name: 'Zlecanie analizy…', exact: true })).toBeDisabled();
   finish();

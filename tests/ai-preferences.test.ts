@@ -1,15 +1,20 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
-import { garmentPatch, aiPreferencesSchema } from '../packages/shared/src/index';
+
+import { aiPreferencesSchema, garmentPatch } from '../packages/shared/src/index.ts';
+
 const mocks = vi.hoisted(() => ({ load: vi.fn() }));
-vi.mock('../apps/api/src/session.js', async (original) => ({
-  ...(await original<typeof import('../apps/api/src/session')>()),
+
+vi.mock('../apps/api/src/modules/auth/session.js', async (original) => ({
+  ...(await original<typeof import('../apps/api/src/modules/auth/session.ts')>()),
   sessions: () => ({ load: mocks.load, close: vi.fn(), pool: { on: vi.fn(), end: vi.fn() } }),
 }));
-import { buildApp } from '../apps/api/src/app';
+import { buildApp } from '../apps/api/src/app/app.ts';
+
 let app: Awaited<ReturnType<typeof buildApp>>;
 let user = '00000000-0000-4000-8000-000000000001';
 const other = '00000000-0000-4000-8000-000000000002';
 const settings = new Map<string, boolean>();
+
 beforeAll(async () => {
   app = await buildApp({
     NODE_ENV: 'test',
@@ -35,6 +40,7 @@ beforeEach(() => {
     sb: {
       from: (table: string) => {
         expect(table).toBe('profiles');
+
         let filter = '';
         let change: { ai_overwrite_metadata: boolean } | undefined;
         const chain = {
@@ -42,18 +48,22 @@ beforeEach(() => {
           eq: (key: string, id: string) => {
             expect(key).toBe('id');
             filter = id;
+
             return chain;
           },
           update: (data: { ai_overwrite_metadata: boolean }) => {
             change = data;
+
             return chain;
           },
           single: async () => {
             expect(filter).toBe(user);
             if (change) settings.set(user, change.ai_overwrite_metadata);
+
             return { data: { ai_overwrite_metadata: settings.get(user) ?? false }, error: null };
           },
         };
+
         return chain;
       },
     },
@@ -61,7 +71,9 @@ beforeEach(() => {
 });
 it('persists the setting for the authenticated user across sessions without affecting others', async () => {
   const get = () => app.inject({ url: '/api/preferences/ai' });
+
   expect((await get()).json()).toEqual({ ai_overwrite_metadata: false });
+
   const r = await app.inject({
     method: 'PATCH',
     url: '/api/preferences/ai',
@@ -69,9 +81,12 @@ it('persists the setting for the authenticated user across sessions without affe
     cookies: { sw_csrf: 'test' },
     payload: { ai_overwrite_metadata: true },
   });
+
   expect(r.statusCode).toBe(200);
   expect(r.json().ai_overwrite_metadata).toBe(true);
+
   const owner = user;
+
   user = other;
   expect((await get()).json().ai_overwrite_metadata).toBe(false);
   user = owner;

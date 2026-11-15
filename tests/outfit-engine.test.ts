@@ -1,11 +1,13 @@
 import { expect, it } from 'vitest';
+
 import {
-  garmentSchema,
-  garmentRole,
-  thermalCompatible,
-  recommend,
   type Garment,
-} from '../packages/shared/src/index';
+  garmentRole,
+  garmentSchema,
+  recommend,
+  thermalCompatible,
+} from '../packages/shared/src/index.ts';
+
 export const item = (n: number, category: Garment['category'], extra: Partial<Garment> = {}) =>
   garmentSchema.parse({
     id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
@@ -20,6 +22,7 @@ export const item = (n: number, category: Garment['category'], extra: Partial<Ga
 it('permits a light base under a genuine winter coat, not a blazer', () => {
   const base = item(1, 'tops', { warmth: 1, subcategory: 'T-shirt' }),
     bottom = item(2, 'bottoms');
+
   expect(
     thermalCompatible(
       [base, bottom, item(3, 'outerwear', { subcategory: 'Kurtka zimowa', warmth: 5 })],
@@ -44,7 +47,8 @@ it('does not use a cardigan as the only base or warm clothes at 40 degrees', () 
 });
 
 it('scores known compatible styles above missing data without forbidding mixtures', async () => {
-  const { styleDecision } = await import('../packages/shared/src/outfit-scoring');
+  const { styleDecision } = await import('../packages/shared/src/outfit-scoring.ts');
+
   expect(
     styleDecision([item(1, 'tops', { style: 'casual' }), item(2, 'bottoms', { style: 'casual' })])
       .value,
@@ -58,11 +62,12 @@ it('scores known compatible styles above missing data without forbidding mixture
 });
 
 it('penalizes unknown palettes and multiple patterns', async () => {
-  const { paletteValue, patternValue } = await import('../packages/shared/src/outfit-colors');
+  const { paletteValue, patternValue } = await import('../packages/shared/src/outfit-colors.ts');
   const known = [
     item(1, 'tops', { primary_color: 'biały', pattern: 'gładki' }),
     item(2, 'bottoms', { primary_color: 'granatowy', pattern: 'gładki' }),
   ];
+
   expect(paletteValue(known).value).toBeGreaterThan(
     paletteValue([item(1, 'tops'), item(2, 'bottoms')]).value,
   );
@@ -72,8 +77,9 @@ it('penalizes unknown palettes and multiple patterns', async () => {
 });
 
 it('ranks compatible footwear and rejects sandals in cold weather', async () => {
-  const { shoeDecision } = await import('../packages/shared/src/outfit-shoes');
+  const { shoeDecision } = await import('../packages/shared/src/outfit-shoes.ts');
   const pants = item(2, 'bottoms', { style: 'formalny' });
+
   expect(
     shoeDecision([pants, item(3, 'shoes', { style: 'formalny' })], 'office', 18).value,
   ).toBeGreaterThan(
@@ -93,9 +99,10 @@ it('ranks compatible footwear and rejects sandals in cold weather', async () => 
 });
 
 it('requires evidence of loops for shorts and a positive reason to add a belt', async () => {
-  const { beltCandidates } = await import('../packages/shared/src/outfit-accessories');
+  const { beltCandidates } = await import('../packages/shared/src/outfit-accessories.ts');
   const belt = item(3, 'accessories', { name: 'Czarny pasek', primary_color: 'czarny' });
   const short = item(2, 'bottoms', { subcategory: 'Szorty chino', primary_color: 'czarny' });
+
   expect(beltCandidates([short], [belt])).toHaveLength(0);
   expect(beltCandidates([{ ...short, notes: 'Szlufki na pasek' }], [belt])).toHaveLength(1);
   expect(beltCandidates([{ ...short, notes: 'Bez szlufek' }], [belt])).toHaveLength(0);
@@ -108,7 +115,7 @@ it('requires evidence of loops for shorts and a positive reason to add a belt', 
 });
 
 it('selects by quality before diversity, is seeded and never forces six weak results', async () => {
-  const { seededOutfitRandom } = await import('../packages/shared/src/outfit-engine');
+  const { seededOutfitRandom } = await import('../packages/shared/src/outfit-engine.ts');
   const good = [
     item(1, 'tops', {
       subcategory: 'Koszula',
@@ -124,6 +131,7 @@ it('selects by quality before diversity, is seeded and never forces six weak res
     }),
     item(3, 'shoes', { subcategory: 'Półbuty', style: 'casual' }),
   ];
+
   expect(recommend(good, 'everyday', 18, seededOutfitRandom(42))).toEqual(
     recommend(good, 'everyday', 18, seededOutfitRandom(42)),
   );

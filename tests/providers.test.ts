@@ -1,5 +1,11 @@
-import { afterEach, it, expect, vi } from 'vitest';
-import { analyze, orient, AiUnavailable } from '../apps/worker/src/providers';
+import { afterEach, expect, it, vi } from 'vitest';
+
+import {
+  AiUnavailable,
+  analyze,
+  orient,
+} from '../apps/worker/src/integrations/ollama/providers.ts';
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -7,7 +13,9 @@ afterEach(() => {
 it('does not contact localhost or download models when LAN AI is unconfigured', async () => {
   vi.stubEnv('OLLAMA_BASE_URL', 'http://localhost:11434');
   vi.stubEnv('OLLAMA_VISION_MODEL', 'existing-vision');
+
   const fetch = vi.fn();
+
   vi.stubGlobal('fetch', fetch);
   await expect(orient(Buffer.from('image'))).rejects.toBeInstanceOf(AiUnavailable);
   expect(fetch).not.toHaveBeenCalled();
@@ -42,7 +50,9 @@ it('validates suggestions and removes photo guesses about material or size', asy
       }),
     }),
   );
+
   const result = await analyze(Buffer.from('image'), false);
+
   expect(result.suggestions.name).toBe('Marynarka');
   expect(result.suggestions.material).toBeUndefined();
   expect(result.suggestions.size).toBeUndefined();
@@ -50,8 +60,10 @@ it('validates suggestions and removes photo guesses about material or size', asy
 it('propagates explicit cancellation instead of treating it as an offline AI retry', async () => {
   vi.stubEnv('OLLAMA_BASE_URL', 'http://192.168.1.80:11434');
   vi.stubEnv('OLLAMA_VISION_MODEL', 'existing-vision');
+
   const controller = new AbortController(),
     reason = new Error('cancelled');
+
   controller.abort(reason);
   vi.stubGlobal(
     'fetch',

@@ -1,8 +1,11 @@
 /** Isolated browser verification; mocked API, no database writes or AI inference. Run against vite preview on :4173. */
 import { chromium, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { garmentInput } from '../packages/shared/src/index';
+
+import { garmentInput } from '../packages/shared/src/index.ts';
+
 const browser = await chromium.launch();
+
 try {
   const page = await browser.newPage();
   const owner = randomUUID(),
@@ -11,11 +14,13 @@ try {
   let failOnce = true;
   const creates: string[] = [],
     uploads: string[] = [];
+
   await page.route('**/api/**', async (route) => {
     const req = route.request(),
       url = new URL(req.url());
     const send = (data: unknown, status = 200) =>
       route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
+
     if (url.pathname === '/api/auth/me')
       return send({ id: owner, email: 'test@example.com', name: 'Test' });
     if (url.pathname === '/api/auth/csrf') return send({ token: 'test' });
@@ -31,8 +36,10 @@ try {
       ]);
     if (url.pathname === '/api/garments' && req.method() === 'GET')
       return send([...records.values()]);
+
     if (url.pathname === '/api/garments' && req.method() === 'POST') {
       const body = req.postDataJSON();
+
       creates.push(body.id);
       if (!records.has(body.id))
         records.set(body.id, {
@@ -45,15 +52,21 @@ try {
           updated_at: new Date().toISOString(),
           garment_images: [],
         });
+
       return send(records.get(body.id));
     }
+
     if (url.pathname.endsWith('/images')) {
       const id = url.pathname.split('/')[3]!;
+
       uploads.push(id);
+
       if (failOnce) {
         failOnce = false;
-        return send({ message: 'Testowy błąd przesyłania' }, 503);
+
+        return send({ message: 'Simulated upload failure' }, 503);
       }
+
       const image = {
         id: url.searchParams.get('upload_id'),
         garment_id: id,
@@ -77,19 +90,24 @@ try {
         orientation: null,
         analysis: null,
       };
+
       records.get(id)!.garment_images = [image];
+
       return send(image);
     }
+
     return send([]);
   });
   await page.goto((process.env.BULK_TEST_ORIGIN ?? 'http://127.0.0.1:4173') + '/wardrobe');
   await page.getByRole('link', { name: 'Dodaj wiele ubrań' }).first().click();
+
   const input = page.getByLabel('Zdjęcia wielu ubrań');
   const photo = (i: number) => ({
     name: `ubranie-${i}.png`,
     mimeType: 'image/png',
     buffer: Buffer.from('test'),
   });
+
   await input.setInputFiles(Array.from({ length: 201 }, (_, i) => photo(i)));
   await expect(page.getByRole('alert')).toContainText('Maksymalnie 200');
   expect(records.size).toBe(0);

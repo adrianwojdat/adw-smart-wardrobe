@@ -1,11 +1,13 @@
-import { recommendBaseline as recommend } from './fixtures/outfit-baseline';
 import { expect, it } from 'vitest';
+
 import {
-  garmentSchema,
-  recommendBelt,
   beltCompatible,
   type Garment,
-} from '../packages/shared/src/index';
+  garmentSchema,
+  recommendBelt,
+} from '../packages/shared/src/index.ts';
+import { recommendBaseline as recommend } from './fixtures/outfit-baseline.ts';
+
 const item = (id: number, category: Garment['category'], extra: Partial<Garment> = {}) =>
   garmentSchema.parse({
     id: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`,
@@ -30,8 +32,10 @@ const black = item(4, 'accessories', {
   subcategory: 'Pasek',
   primary_color: 'czarny',
 });
+
 it('adds an owned belt as an optional addition to chinos without replacing base clothes', () => {
   const outfits = recommend([top, pants, brown], 'everyday');
+
   expect(outfits).toEqual([[top, pants, brown]]);
   expect(recommend([top, pants], 'everyday')).toEqual([[top, pants]]);
 });
@@ -45,6 +49,7 @@ it.each([
   'Spódnica',
 ])('does not add a belt to %s', (subcategory) => {
   const garment = { ...pants, subcategory };
+
   expect(beltCompatible(garment)).toBe(false);
   expect(recommendBelt([top, garment], [brown, black])).toBeUndefined();
 });
@@ -54,6 +59,7 @@ it('prefers a compatible neutral shoe color over a weaker trouser match', () => 
     style: 'Formalny',
     subcategory: 'Półbuty',
   });
+
   expect(recommendBelt([top, pants, shoes], [brown, black])?.id).toBe(black.id);
   expect(
     recommendBelt([top, pants, { ...shoes, primary_color: 'brązowy' }], [black, brown])?.id,

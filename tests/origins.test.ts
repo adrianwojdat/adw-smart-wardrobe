@@ -1,10 +1,13 @@
 import { expect, it } from 'vitest';
-import { allowedOrigins } from '../apps/api/src/origins';
+
+import { allowedOrigins } from '../apps/api/src/app/origins.ts';
+
 it('requires explicit origins and keeps the canonical localhost origin', () => {
   const allowed = allowedOrigins(
     'http://localhost:8080',
     ' http://192.168.0.217:8080,https://wardrobe.example ',
   );
+
   expect(allowed.has('http://localhost:8080')).toBe(true);
   expect(allowed.has('http://192.168.0.217:8080')).toBe(true);
   for (const origin of [

@@ -1,18 +1,24 @@
-import Fastify from '../apps/api/node_modules/fastify';
-import type { Queue } from '../apps/api/node_modules/bullmq';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { mountQueueBoard, QUEUE_BOARD_PATH } from '../apps/api/src/queue-board';
-import { HttpError } from '../apps/api/src/session';
+
+import type { Queue } from '../apps/api/node_modules/bullmq';
+import Fastify from '../apps/api/node_modules/fastify';
+import { HttpError } from '../apps/api/src/modules/auth/session.ts';
+import { mountQueueBoard, QUEUE_BOARD_PATH } from '../apps/api/src/modules/queues/queue-board.ts';
+
 const app = Fastify();
+
 beforeAll(async () => {
   app.setErrorHandler((error, _req, reply) =>
     reply.code((error as HttpError).statusCode ?? 500).send({ message: (error as Error).message }),
   );
+
   const queues = ['wardrobe', 'wardrobe-ai'].map(
     (name) => ({ name, metaValues: { version: 'bullmq:6.7.2' } }) as unknown as Queue,
   );
+
   await mountQueueBoard(app, queues, ['admin'], async (req) => {
-    if (!req.headers['x-test-user']) throw new HttpError(401, 'Zaloguj się.');
+    if (!req.headers['x-test-user']) throw new HttpError(401, 'Sign in.');
+
     return String(req.headers['x-test-user']);
   });
 });
@@ -24,9 +30,12 @@ it('serves the actual dashboard HTML and bundled static assets behind the guard'
     url: QUEUE_BOARD_PATH + '/',
     headers: { 'x-test-user': 'admin' },
   });
+
   expect(response.statusCode).toBe(200);
   expect(response.body).toContain('Smart Wardrobe · Kolejki');
+
   const asset = response.body.match(/src="(static\/js\/[^"]+)"/)?.[1];
+
   expect(asset).toBeTruthy();
   expect((await app.inject({ url: QUEUE_BOARD_PATH + '/' + asset })).statusCode).toBe(401);
   expect(

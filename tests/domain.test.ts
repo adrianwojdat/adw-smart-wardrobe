@@ -1,7 +1,9 @@
-import { recommendBaseline as recommend } from './fixtures/outfit-baseline';
-import { describe, it, expect } from 'vitest';
-import { garmentInput, garmentSchema, registerSchema } from '../packages/shared/src/index';
-import { encrypt, decrypt, hash } from '../apps/api/src/session';
+import { describe, expect, it } from 'vitest';
+
+import { decrypt, encrypt, hash } from '../apps/api/src/modules/auth/session.ts';
+import { garmentInput, garmentSchema, registerSchema } from '../packages/shared/src/index.ts';
+import { recommendBaseline as recommend } from './fixtures/outfit-baseline.ts';
+
 const base = {
   wardrobe_id: '2fd58432-9442-4190-9e2b-e1cab47b7cc7',
   owner_id: '55828b54-e64e-4da6-91b7-985dd1481e48',
@@ -11,11 +13,14 @@ const base = {
 };
 const garment = (id: string, category: 'tops' | 'bottoms' | 'shoes' | 'dresses', extra = {}) =>
   garmentSchema.parse({ ...base, id, category, ...extra });
+
 describe('owned wardrobe recommendations', () => {
   const top = garment('9cd2f856-56f2-4b14-bc57-3b8d609e1f81', 'tops');
   const bottom = garment('f3d945bd-b8cb-488a-9f30-55b9c80ebd06', 'bottoms');
+
   it('uses exact IDs and never invents missing garments', () => {
     const result = recommend([top, bottom], 'everyday');
+
     expect(result).toEqual([[top, bottom]]);
     expect(recommend([top], 'everyday')).toEqual([]);
   });
@@ -24,15 +29,18 @@ describe('owned wardrobe recommendations', () => {
     expect(recommend([top, { ...bottom, archived: true }], 'everyday')).toEqual([]);
     expect(recommend([{ ...top, occasions: ['office'] }, bottom], 'date')).toEqual([]);
   });
+
   const sample = (i: number, category: 'tops' | 'bottoms' | 'shoes' | 'dresses') =>
     garment(`00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, category);
   const seeded = (seed: number) => () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+
   it('uses six distinct tops and bottoms when available, with varied requests', () => {
     const clothes = [
       ...Array.from({ length: 8 }, (_, i) => sample(i + 1, 'tops')),
       ...Array.from({ length: 8 }, (_, i) => sample(i + 20, 'bottoms')),
     ];
     const first = recommend(clothes, 'everyday', 18, seeded(1));
+
     expect(first).toHaveLength(6);
     for (const category of ['tops', 'bottoms'])
       expect(
@@ -52,6 +60,7 @@ describe('owned wardrobe recommendations', () => {
       ...Array.from({ length: 6 }, (_, i) => sample(i + 20, 'bottoms')),
     ];
     const result = recommend(clothes, 'everyday', 18, seeded(3));
+
     expect(result).toHaveLength(6);
     expect(
       new Set(
@@ -67,6 +76,7 @@ describe('owned wardrobe recommendations', () => {
   });
   it('caps combinations and allows dresses without fabricated shoes', () => {
     const dress = garment('55dab414-e03e-4797-a160-9fef20800d42', 'dresses');
+
     expect(recommend([dress], 'everyday')).toEqual([[dress]]);
   });
 });
@@ -86,14 +96,17 @@ describe('boundary validation', () => {
   });
   it('strips ownership fields from updates', () => {
     const parsed = garmentInput.parse({ ...base, category: 'tops', owner_id: 'attacker' });
+
     expect(parsed).not.toHaveProperty('owner_id');
   });
 });
 describe('encrypted opaque sessions', () => {
   const key = 'ab'.repeat(32);
+
   it('round trips without retaining plaintext', () => {
     const token = 'sensitive-provider-refresh-token';
     const ciphertext = encrypt(token, key);
+
     expect(ciphertext).not.toContain(token);
     expect(decrypt(ciphertext, key)).toBe(token);
     expect(hash(token)).toHaveLength(64);
@@ -101,6 +114,7 @@ describe('encrypted opaque sessions', () => {
   it('rejects tampering and wrong keys', () => {
     const encrypted = encrypt('token', key);
     const bytes = Buffer.from(encrypted, 'base64url');
+
     bytes[15] = bytes[15]! ^ 1;
     expect(() => decrypt(bytes.toString('base64url'), key)).toThrow();
     expect(() => decrypt(encrypted, 'cd'.repeat(32))).toThrow();

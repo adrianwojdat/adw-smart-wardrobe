@@ -1,5 +1,7 @@
 import { expect, it, vi } from 'vitest';
-import { cleanupWardrobe } from '../apps/worker/src/wardrobe-cleanup';
+
+import { cleanupWardrobe } from '../apps/worker/src/jobs/cleanup/wardrobe-cleanup.ts';
+
 it('removes only durable scoped paths and job IDs, then acknowledges cleanup', async () => {
   const query = vi.fn(async (sql: string) => ({
     rows: sql.startsWith('select') ? [{ wardrobe_id: 'owned', job_ids: ['job-one'] }] : [],
@@ -20,6 +22,7 @@ it('removes only durable scoped paths and job IDs, then acknowledges cleanup', a
   const storage = { storage: { from: vi.fn(() => ({ list, remove })) } };
   const jobRemove = vi.fn();
   const queue = { getJob: vi.fn(async () => ({ remove: jobRemove })) };
+
   await cleanupWardrobe(pool as never, storage as never, [queue as never]);
   expect(queue.getJob).toHaveBeenCalledWith('job-one');
   expect(jobRemove).toHaveBeenCalledOnce();
@@ -43,6 +46,7 @@ it('keeps cleanup durable when an active Redis job cannot be removed', async () 
       },
     }),
   };
+
   await expect(cleanupWardrobe(pool as never, {} as never, [queue as never])).rejects.toThrow(
     'locked',
   );

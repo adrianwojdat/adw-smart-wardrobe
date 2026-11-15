@@ -1,7 +1,10 @@
 /** UI-only regression using synthetic records and a mocked API. */
 import { chromium, expect } from '@playwright/test';
-import { garmentSchema } from '../packages/shared/src/index';
+
+import { garmentSchema } from '../packages/shared/src/index.ts';
+
 const browser = await chromium.launch();
+
 try {
   const page = await browser.newPage({ serviceWorkers: 'block' });
   const owner = '00000000-0000-4000-8000-000000000001',
@@ -19,10 +22,12 @@ try {
     updated_at: new Date().toISOString(),
   });
   let saved: Record<string, unknown> | undefined;
+
   await page.route('**/api/**', async (route) => {
     const req = route.request(),
       path = new URL(req.url()).pathname;
     let data: unknown = [];
+
     if (path === '/api/auth/me') data = { id: owner, email: 'test@example.invalid', name: 'Test' };
     if (path === '/api/auth/csrf') data = { token: 'test' };
     if (path === '/api/wardrobes')
@@ -36,19 +41,26 @@ try {
         },
       ];
     if (path === '/api/config') data = { smtpConfigured: false, emailConfirmation: false };
+
     if (path === `/api/garments/${id}`) {
       if (req.method() === 'PATCH') {
         saved = req.postDataJSON();
         garment = garmentSchema.parse({ ...garment, ...saved });
       }
+
       data = garment;
     }
+
     if (path === '/api/recommendations') data = { source: 'rules', outfits: [] };
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) });
   });
+
   const origin = process.env.TEST_ORIGIN ?? 'http://127.0.0.1:4173';
+
   await page.goto(origin + '/garments/new');
+
   const warmth = page.getByRole('spinbutton', { name: /Ciepło/ });
+
   await expect(warmth).toHaveValue('1');
   await page.getByLabel('Podkategoria', { exact: true }).fill('Koszulka polo');
   await expect(warmth).toHaveValue('2');

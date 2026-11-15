@@ -1,23 +1,29 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
 const sharp = createRequire(new URL('../apps/api/package.json', import.meta.url))(
   'sharp',
 ) as typeof import('../apps/api/node_modules/sharp');
+
 import { randomUUID } from 'node:crypto';
+
 const mocks = vi.hoisted(() => ({
   load: vi.fn(),
   upload: vi.fn(),
   remove: vi.fn(),
   insert: vi.fn(),
 }));
-vi.mock('../apps/api/src/session.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../apps/api/src/session.js')>();
+
+vi.mock('../apps/api/src/modules/auth/session.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../apps/api/src/modules/auth/session.js')>();
+
   return {
     ...original,
     sessions: () => ({ load: mocks.load, close: vi.fn(), pool: { end: vi.fn(), on: vi.fn() } }),
   };
 });
-import { buildApp } from '../apps/api/src/app';
+import { buildApp } from '../apps/api/src/app/app.ts';
+
 let app: Awaited<ReturnType<typeof buildApp>>;
 const id = randomUUID(),
   wardrobe = randomUUID(),
@@ -27,6 +33,7 @@ let images: Record<string, unknown>[] = [];
 let duplicate = false;
 let imageInsertFails = false;
 let owner = user;
+
 function from(table: string) {
   let inserted = false;
   const chain = {
@@ -35,6 +42,7 @@ function from(table: string) {
     insert: (data: unknown) => {
       inserted = true;
       mocks.insert(table, data);
+
       return chain;
     },
     single: async () => {
@@ -46,14 +54,19 @@ function from(table: string) {
               error: null,
             };
       if (inserted && imageInsertFails) return { data: null, error: { code: 'error' } };
+
       const row = { id: imageId, garment_id: id, path: 'private.original' };
+
       images = [row];
+
       return { data: row, error: null };
     },
     then: (resolve: (value: unknown) => void) => resolve({ data: images, error: null }),
   };
+
   return chain;
 }
+
 beforeAll(async () => {
   app = await buildApp({
     NODE_ENV: 'test',
@@ -87,11 +100,14 @@ beforeEach(() => {
     },
   });
 });
+
 const headers = { origin: 'http://localhost:8080', cookie: 'sw_csrf=test', 'x-csrf-token': 'test' };
+
 async function photo() {
   const bytes = await sharp({ create: { width: 2, height: 2, channels: 3, background: '#314c40' } })
     .png()
     .toBuffer();
+
   return Buffer.concat([
     Buffer.from(
       '--test-boundary\r\nContent-Disposition: form-data; name="file"; filename="photo.png"\r\nContent-Type: image/png\r\n\r\n',
@@ -100,6 +116,7 @@ async function photo() {
     Buffer.from('\r\n--test-boundary--\r\n'),
   ]);
 }
+
 async function upload() {
   return app.inject({
     method: 'POST',
@@ -108,27 +125,32 @@ async function upload() {
     payload: await photo(),
   });
 }
+
 describe('bulk API retry semantics (mocked Supabase)', () => {
   it('returns the same garment after a lost create response without updating it', async () => {
     duplicate = true;
+
     const result = await app.inject({
       method: 'POST',
       url: '/api/garments',
       headers,
       payload: { id, wardrobe_id: wardrobe, category: 'tops' },
     });
+
     expect(result.statusCode).toBe(200);
     expect(result.json().id).toBe(id);
   });
   it('refuses replaying a different user’s garment ID', async () => {
     duplicate = true;
     owner = randomUUID();
+
     const result = await app.inject({
       method: 'POST',
       url: '/api/garments',
       headers,
       payload: { id, wardrobe_id: wardrobe, category: 'tops' },
     });
+
     expect(result.statusCode).toBe(403);
   });
   it('reuses the image ID and original path on retry, without overwriting the original', async () => {

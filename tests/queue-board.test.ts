@@ -1,8 +1,11 @@
-import Fastify from '../apps/api/node_modules/fastify';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { queueBoardGuard, QUEUE_BOARD_PATH } from '../apps/api/src/queue-board';
-import { HttpError } from '../apps/api/src/session';
+
+import Fastify from '../apps/api/node_modules/fastify';
+import { HttpError } from '../apps/api/src/modules/auth/session.ts';
+import { QUEUE_BOARD_PATH, queueBoardGuard } from '../apps/api/src/modules/queues/queue-board.ts';
+
 const app = Fastify();
+
 beforeAll(async () => {
   app.setErrorHandler((error, _req, reply) =>
     reply.code((error as HttpError).statusCode ?? 500).send({ message: (error as Error).message }),
@@ -12,7 +15,9 @@ beforeAll(async () => {
       'onRequest',
       queueBoardGuard(['admin-id'], async (req) => {
         const id = req.headers['x-test-user'];
-        if (!id) throw new HttpError(401, 'Zaloguj się.');
+
+        if (!id) throw new HttpError(401, 'Sign in.');
+
         return String(id);
       }),
     );
@@ -39,10 +44,12 @@ it('protects HTML, trailing slash, assets and API from anonymous and non-admin u
         })
       ).statusCode,
     ).toBe(403);
+
     const response = await app.inject({
       url: QUEUE_BOARD_PATH + suffix,
       headers: { 'x-test-user': 'admin-id' },
     });
+
     expect(response.statusCode).toBe(200);
     expect(response.headers['cache-control']).toContain('no-store');
   }

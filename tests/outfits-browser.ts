@@ -1,10 +1,13 @@
 /** Browser regression: empty recommendation response must give actionable feedback. No data writes. */
 import { chromium, expect } from '@playwright/test';
+
 const browser = await chromium.launch();
+
 try {
   const page = await browser.newPage({ serviceWorkers: 'block' });
   const id = '00000000-0000-4000-8000-000000000001';
   let requests = 0;
+
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     const data =
@@ -25,6 +28,7 @@ try {
             : path === '/api/recommendations'
               ? (requests++, { source: 'rules', outfits: [] })
               : [];
+
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) });
   });
   await page.goto('http://localhost:8080/outfits');
