@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    "docker-compose.yml",
+    "infra/auth-email/templates/pl-PL/confirmation.html",
+    "infra/auth-email/templates/pl-PL/email_change.html",
+    "infra/auth-email/templates/pl-PL/invite.html",
+    "infra/auth-email/templates/pl-PL/magic_link.html",
+    "infra/auth-email/templates/pl-PL/reauthentication.html",
+    "infra/auth-email/templates/pl-PL/recovery.html",
+    "infra/dev-mail/package.json",
+    "infra/dev-mail/server.mjs",
+    "infra/models/README.md",
+    "infra/models/fashion-siglip/prototypes.json"
+  ]
+}

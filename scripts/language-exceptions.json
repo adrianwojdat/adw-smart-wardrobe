@@ -1,0 +1,41 @@
+{
+  "immutableMigrations": {
+    "supabase/migrations/0009_initial_classification.sql": "bf63b744ed7c44dc4150429f3034aa035a69dd05ec5d4c85a05c90e0870344de",
+    "supabase/migrations/0016_style_profile.sql": "2d54358a56fb052ee2bfbcff22073d4836cbec0aadba6e993b866b6b930eebca",
+    "supabase/migrations/0011_wardrobe_deletion.sql": "6611e858f43e07197e3eacddd81c5eb6f2735660f38375d4b55a47c220a53198",
+    "supabase/migrations/0014_ai_metadata_preference.sql": "2a6de7e828d858c30c3d6b028335e269fe7134f913b17ebd94a5222f29e07495",
+    "supabase/migrations/0006_automatic_names.sql": "7031d795e56891234d3b7da8b980530bd01200076fef51f2f09bb1dc29904192",
+    "supabase/migrations/0002_operations.sql": "4711805a26be70103a79bb3aafd8543a2a38ba2dc5751aebc614a7f4d766994a",
+    "supabase/migrations/0024_persist_saved_outfit_descriptions.sql": "0a8c93e23f836408fde50751b83971bf851260a9d71faec91cbc1bcc2935280d",
+    "supabase/migrations/0010_worker_classifier_access.sql": "9bf0a93ae9155009d71c665502ea25a9e0465ed428d90b59312ad8ccc0d2910c",
+    "supabase/migrations/0020_gemini_credential_revoke_default_dml.sql": "4877f0e15ddf1c5bd748827cd45ff3660135bec155471b1216335b475c473436",
+    "supabase/migrations/0017_gemini_configuration.sql": "ae6379edc1586951a1cf4375d92fb108c52d75c8e49b1f6f37394afccbfd6c1d",
+    "supabase/migrations/0008_job_controls.sql": "27099e8c772876e46c0176dd5ae9a4a43ca2bc09e546686ce1d559ef1e766f2f",
+    "supabase/migrations/0003_wardrobe_returning.sql": "401d0e11f7af9f540640cd9c06c7cdeb61af3a4e9afa2c947a5d0d48482bf7b3",
+    "supabase/migrations/0004_image_rotation.sql": "3f1ecaab32dd520d66ebea99191052d2b7bdfb46c2b49ddbb1cd6ff70a3ab5b4",
+    "supabase/migrations/0018_gemini_credential_column_privileges.sql": "7ca4a7637c37cabcd7ba677e30e01d548fbcbf38f38ac0363ed6bfd1866c39da",
+    "supabase/migrations/0015_custom_garment_properties.sql": "ebbbaa511c0ad5097e7ac4b3e99a677be07fa3b1308cd370c4ffc7b07a9b2414",
+    "supabase/migrations/0021_gemini_outfit_generation.sql": "aac764a5883081574f96c8e1c7259ed96aa01a01013b24e6adc068b3769c6a45",
+    "supabase/migrations/0012_wardrobe_analysis.sql": "8470916eb6776f2a45949cb4c1674b229ee7eb552dc4eae640592312ed21e3cc",
+    "supabase/migrations/0019_gemini_credential_bff_writes.sql": "1f1f171827d7eced8ba829f89901a1baff0039e44639cd2f570d7112f5a269c5",
+    "supabase/migrations/0022_fix_gemini_outfit_task.sql": "08fa2d51e52a0c9ee44fa88c988fbba6975be0880998010a65cc047e18c02675",
+    "supabase/migrations/0007_bulk_upload_ids.sql": "40158c0c27543e2b8c0091f561d579c25b80780538921699f5f59a86748722d6",
+    "supabase/migrations/0025_travel_packing.sql": "bc15490e0be1d545128c677ae8e5f768a5bab088097ecc68846125aa1b84f296",
+    "supabase/migrations/0023_fix_gemini_outfit_context.sql": "d4a9fa69baf28241640417cc832bc0fd16bbab6661fe3fa4eba13bd5e83f7782",
+    "supabase/migrations/0001_wardrobe.sql": "db23f2f0d147371221516162dc489eb7a625f76e9aa4407e24808e73a9952004",
+    "supabase/migrations/0013_category_warmth.sql": "60c6e0c65d67e2616f6e38828d3c46d906baec30ffaf9162ffab402061e7282c",
+    "supabase/migrations/0005_image_pipeline.sql": "4d27789f8c5e041cce8032e550f46981c5c140e26de1fcb72d43168979669098"
+  },
+  "multilingualData": {
+    "packages/shared/src/outfit-text.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/accessories.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/outfit-style.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/locale.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/warmth.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/style-profile-summary.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/style-profile-engine.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/outfit-colors.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/travel-packing/catalog.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked.",
+    "packages/shared/src/travel-packing/rules.ts": "Intentional English/Polish garment normalization vocabulary; comments and technical diagnostics remain checked."
+  }
+}

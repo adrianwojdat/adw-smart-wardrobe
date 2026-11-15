@@ -8,3 +8,23 @@ test-results
 
 investigation
 data
+
+# Generated artifacts and local tool state.
+**/build
+**/coverage
+**/.cache
+**/*.min.js
+**/*.min.css
+**/*.tsbuildinfo
+.agents
+.codex
+.aws
+.husky/_
+.pipeline-artifacts
+backups
+# Generated model metadata and immutable database migrations.
+infra/models/**/*.json
+supabase/migrations
+# Machine-written quality evidence is reviewed through its own scripts.
+docs/quality/*-baseline.json
+.dependency-cruiser-known-violations.json
