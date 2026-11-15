@@ -1,7 +1,8 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
 export default defineConfig({
   plugins: [
     react(),
@@ -10,10 +11,10 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'offline.html'],
       manifest: {
-        name: 'Smart Wardrobe — Twoja szafa',
+        name: 'Smart Wardrobe',
         short_name: 'Wardrobe',
-        description: 'Twoja prywatna garderoba',
-        lang: 'pl-PL',
+        description: 'Your private digital wardrobe',
+        lang: 'en',
         start_url: '/dashboard',
         display: 'standalone',
         theme_color: '#314c40',

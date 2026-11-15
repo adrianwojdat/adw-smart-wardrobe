@@ -1,0 +1,15 @@
+{
+  "required": "This field is required.",
+  "email": "Enter a valid email address.",
+  "invalid": "Enter a valid value.",
+  "duplicate": "Remove duplicate answers.",
+  "exclusiveNone": "“None” cannot be selected with other answers.",
+  "minLength_one": "Enter at least {{count}} character.",
+  "minLength_other": "Enter at least {{count}} characters.",
+  "maxLength_one": "Enter no more than {{count}} character.",
+  "maxLength_other": "Enter no more than {{count}} characters.",
+  "minLength_few": "Enter at least {{count}} characters.",
+  "minLength_many": "Enter at least {{count}} characters.",
+  "maxLength_few": "Enter no more than {{count}} characters.",
+  "maxLength_many": "Enter no more than {{count}} characters."
+}

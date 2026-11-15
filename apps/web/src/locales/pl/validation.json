@@ -1,0 +1,15 @@
+{
+  "required": "To pole jest wymagane.",
+  "email": "Wpisz poprawny adres e-mail.",
+  "invalid": "Wpisz poprawną wartość.",
+  "duplicate": "Usuń powtórzone odpowiedzi.",
+  "exclusiveNone": "„Żadne” nie może być zaznaczone razem z innymi odpowiedziami.",
+  "minLength_one": "Wpisz co najmniej {{count}} znak.",
+  "minLength_few": "Wpisz co najmniej {{count}} znaki.",
+  "minLength_many": "Wpisz co najmniej {{count}} znaków.",
+  "minLength_other": "Wpisz co najmniej {{count}} znaku.",
+  "maxLength_one": "Wpisz maksymalnie {{count}} znak.",
+  "maxLength_few": "Wpisz maksymalnie {{count}} znaki.",
+  "maxLength_many": "Wpisz maksymalnie {{count}} znaków.",
+  "maxLength_other": "Wpisz maksymalnie {{count}} znaku."
+}

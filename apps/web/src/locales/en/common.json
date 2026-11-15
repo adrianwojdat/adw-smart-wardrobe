@@ -1,0 +1,121 @@
+{
+  "actions": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "retry": "Try again",
+    "save": "Save",
+    "submit": "Submit",
+    "chooseValue": "Choose a value",
+    "deleteGarment": "Delete garment",
+    "keep": "Keep"
+  },
+  "errors": {
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "forbidden": "You do not have permission to perform this action.",
+    "notFound": "The requested item could not be found.",
+    "rateLimited": "Too many requests. Please wait a moment and try again.",
+    "server": "The server could not complete the request. Please try again later.",
+    "network": "Could not connect to the server. Check your connection and try again.",
+    "request": "This request could not be completed."
+  },
+  "state": {
+    "loading": "Loading",
+    "unexpectedError": "An unexpected error occurred.",
+    "notFound": "This page could not be found.",
+    "backToWardrobe": "Back to wardrobe",
+    "skipContent": "Skip to content",
+    "tryAgain": "Try again"
+  },
+  "shell": {
+    "loadingWardrobe": "Loading wardrobe…",
+    "yourWardrobeReimagined": "Your wardrobe, thoughtfully reimagined.",
+    "privateLabel": "Only you and invited members can see this",
+    "madeForWhatYouOwn": "Made for what you already own.",
+    "newWardrobe": "New wardrobe",
+    "makeRoom": "Make room for your favourite pieces.",
+    "wardrobeName": "Wardrobe name",
+    "wardrobeNamePlaceholder": "e.g. My wardrobe",
+    "visibility": "Visibility",
+    "private": "Private — only me",
+    "family": "Family — invited members",
+    "creating": "Creating…",
+    "createWardrobe": "Create wardrobe",
+    "wardrobeReady": "Your wardrobe is ready. Add your first garment.",
+    "wardrobeDeleted": "Wardrobe and garments deleted. Photos and jobs are being cleaned up in the background.",
+    "logoutFailed": "Could not log out.",
+    "dismissNotification": "Dismiss notification",
+    "chooseWardrobe": "Choose a wardrobe",
+    "wardrobes": "Wardrobes",
+    "yourWardrobe": "Your wardrobe"
+  },
+  "garments": {
+    "count_one": "{{count}} garment",
+    "count_other": "{{count}} garments",
+    "count_few": "{{count}} garments",
+    "count_many": "{{count}} garments"
+  },
+  "vocabulary": {
+    "readinessFields": {
+      "category": "category",
+      "color": "colour"
+    },
+    "categories": {
+      "tops": "Tops",
+      "bottoms": "Bottoms",
+      "dresses": "Dresses",
+      "outerwear": "Outerwear",
+      "shoes": "Shoes",
+      "accessories": "Accessories"
+    },
+    "cleanliness": {
+      "clean": "Clean",
+      "worn": "Worn",
+      "dirty": "Needs washing",
+      "washing": "In the wash",
+      "drying": "Drying",
+      "ironing": "Needs ironing"
+    },
+    "seasons": {
+      "spring": "Spring",
+      "summer": "Summer",
+      "autumn": "Autumn",
+      "winter": "Winter"
+    },
+    "occasions": {
+      "office": "Office",
+      "everyday": "Everyday",
+      "date": "Date",
+      "evening": "Evening",
+      "weekend": "Weekend",
+      "travel": "Travel"
+    },
+    "materialSource": {
+      "unknown": "Composition unknown",
+      "user": "Entered by me",
+      "label": "Read from label"
+    },
+    "thickness": {
+      "thin": "Lightweight",
+      "medium": "Medium",
+      "thick": "Thick"
+    },
+    "wearCondition": {
+      "unknown": "Not assessed",
+      "new_with_tags": "New with tags",
+      "new_without_tags": "New without tags",
+      "very_good": "Very good",
+      "good": "Good",
+      "satisfactory": "Satisfactory"
+    },
+    "archived": "Archived"
+  },
+  "update": {
+    "ready": "A new version is ready.",
+    "refresh": "Refresh the app"
+  },
+  "meta": {
+    "description": "Your private wardrobe. Less clutter, more thoughtful style."
+  }
+}

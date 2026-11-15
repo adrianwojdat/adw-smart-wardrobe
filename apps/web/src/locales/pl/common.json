@@ -1,0 +1,121 @@
+{
+  "actions": {
+    "cancel": "Anuluj",
+    "close": "Zamknij",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "retry": "Spróbuj ponownie",
+    "save": "Zapisz",
+    "submit": "Wyślij",
+    "chooseValue": "Wybierz wartość",
+    "deleteGarment": "Usuń ubranie",
+    "keep": "Zachowaj"
+  },
+  "errors": {
+    "unauthorized": "Sesja wygasła. Zaloguj się ponownie.",
+    "forbidden": "Nie masz uprawnień do wykonania tej operacji.",
+    "notFound": "Nie znaleziono wskazanego elementu.",
+    "rateLimited": "Wysłano zbyt wiele żądań. Odczekaj chwilę i spróbuj ponownie.",
+    "server": "Serwer nie może teraz wykonać żądania. Spróbuj ponownie później.",
+    "network": "Nie można połączyć się z serwerem. Sprawdź połączenie i spróbuj ponownie.",
+    "request": "Nie udało się wykonać tego żądania."
+  },
+  "state": {
+    "loading": "Ładowanie",
+    "unexpectedError": "Wystąpił nieoczekiwany błąd.",
+    "notFound": "Nie ma tu tej strony.",
+    "backToWardrobe": "Wróć do garderoby",
+    "skipContent": "Przejdź do treści",
+    "tryAgain": "Spróbuj ponownie"
+  },
+  "shell": {
+    "loadingWardrobe": "Ładowanie garderoby…",
+    "yourWardrobeReimagined": "Twoja garderoba, przemyślana na nowo.",
+    "privateLabel": "Tylko dla Ciebie i zaproszonych osób",
+    "madeForWhatYouOwn": "Stworzone z myślą o tym, co już masz.",
+    "newWardrobe": "Nowa garderoba",
+    "makeRoom": "Zrób miejsce dla ulubionych rzeczy.",
+    "wardrobeName": "Nazwa garderoby",
+    "wardrobeNamePlaceholder": "np. Moja garderoba",
+    "visibility": "Widoczność",
+    "private": "Prywatna — tylko dla mnie",
+    "family": "Rodzinna — dla zaproszonych osób",
+    "creating": "Tworzenie…",
+    "createWardrobe": "Utwórz garderobę",
+    "wardrobeReady": "Garderoba jest gotowa. Dodaj pierwsze ubranie.",
+    "wardrobeDeleted": "Usunięto garderobę i ubrania. Zdjęcia i kolejki są sprzątane w tle.",
+    "logoutFailed": "Nie udało się wylogować.",
+    "dismissNotification": "Zamknij powiadomienie",
+    "chooseWardrobe": "Wybierz garderobę",
+    "wardrobes": "Garderoby",
+    "yourWardrobe": "Twoja garderoba"
+  },
+  "garments": {
+    "count_one": "{{count}} ubranie",
+    "count_few": "{{count}} ubrania",
+    "count_many": "{{count}} ubrań",
+    "count_other": "{{count}} ubrania"
+  },
+  "vocabulary": {
+    "readinessFields": {
+      "category": "kategorię",
+      "color": "kolor"
+    },
+    "categories": {
+      "tops": "Góra",
+      "bottoms": "Spodnie i spódnice",
+      "dresses": "Sukienki",
+      "outerwear": "Okrycia wierzchnie",
+      "shoes": "Obuwie",
+      "accessories": "Dodatki"
+    },
+    "cleanliness": {
+      "clean": "Czyste",
+      "worn": "Noszone",
+      "dirty": "Do prania",
+      "washing": "W praniu",
+      "drying": "Suszenie",
+      "ironing": "Do prasowania"
+    },
+    "seasons": {
+      "spring": "Wiosna",
+      "summer": "Lato",
+      "autumn": "Jesień",
+      "winter": "Zima"
+    },
+    "occasions": {
+      "office": "Do biura",
+      "everyday": "Na co dzień",
+      "date": "Na randkę",
+      "evening": "Na wieczór",
+      "weekend": "Na weekend",
+      "travel": "W podróż"
+    },
+    "materialSource": {
+      "unknown": "Nie znam składu",
+      "user": "Wpisane przeze mnie",
+      "label": "Odczytane z metki"
+    },
+    "thickness": {
+      "thin": "Cienkie",
+      "medium": "Średnie",
+      "thick": "Grube"
+    },
+    "wearCondition": {
+      "unknown": "Nie oceniono",
+      "new_with_tags": "Nowe z metką",
+      "new_without_tags": "Nowe bez metki",
+      "very_good": "Bardzo dobry",
+      "good": "Dobry",
+      "satisfactory": "Zadowalający"
+    },
+    "archived": "Zarchiwizowane"
+  },
+  "update": {
+    "ready": "Nowa wersja jest gotowa.",
+    "refresh": "Odśwież aplikację"
+  },
+  "meta": {
+    "description": "Twoja prywatna garderoba. Mniej chaosu, więcej dobrego stylu."
+  }
+}

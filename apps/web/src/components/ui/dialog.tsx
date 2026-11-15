@@ -1,6 +1,8 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+
 export function Dialog({
   open,
   onOpenChange,
@@ -14,6 +16,8 @@ export function Dialog({
   description: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation('common');
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -24,7 +28,7 @@ export function Dialog({
             {description}
           </DialogPrimitive.Description>
           {children}
-          <DialogPrimitive.Close className="dialog-close" aria-label="Zamknij">
+          <DialogPrimitive.Close className="dialog-close" aria-label={t('actions.close')}>
             <X size={20} />
           </DialogPrimitive.Close>
         </DialogPrimitive.Content>
