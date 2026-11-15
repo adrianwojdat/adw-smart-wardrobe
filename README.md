@@ -2,45 +2,41 @@
 
 **A private digital wardrobe with English and Polish interfaces, local image analysis, and outfit recommendations using garments you actually own.**
 
-Smart Wardrobe helps organize personal and family clothing: upload images, prepare catalog photographs, identify categories and colors, manage laundry, and save outfits. The application is self-hosted: accounts, data, and photos stay on your infrastructure. The core wardrobe and CPU image pipeline do not require Supabase Cloud or a paid AI API. Gemini-powered outfit and packing enrichment requires a user-configured Gemini credential.
+Smart Wardrobe helps organize personal and family clothing: upload images, prepare catalog photographs, identify categories and colors, manage laundry, save outfits, and create smart packing lists for trips. The application is self-hosted: accounts, data, and photos stay on your infrastructure. The core wardrobe and CPU image pipeline do not require Supabase Cloud or a paid AI API. Gemini-powered outfit and packing enrichment requires a user-configured Gemini credential.
 
 This React SPA works on desktop and mobile and runs with its entire backend through **one root Docker Compose configuration**. Default garment analysis and background removal run on the CPU. Ollama on a separate LAN computer is optional.
 
 ## Contents
 
 - [Development Guide](#development-guide)
-
-- [Application features](#co-potrafi-aplikacja)
-- [Getting started](#uruchomienie)
-- [Using the application](#jak-używać)
-- [Images and AI analysis](#zdjęcia-i-analiza-ai)
-- [Architecture](#architektura)
-- [Configuration](#konfiguracja)
-- [Administration and maintenance](#administracja-i-utrzymanie)
-- [Development and tests](#development-i-testy)
-- [Limitations](#ograniczenia)
-- [Documentation](#dokumentacja)
-
-<a id="co-potrafi-aplikacja"></a>
+- [Application features](#application-features)
+- [Getting started](#getting-started)
+- [Using the application](#using-the-application)
+- [Images and AI analysis](#images-and-ai-analysis)
+- [Architecture](#architecture)
+- [Configuration](#configuration)
+- [Administration and maintenance](#administration-and-maintenance)
+- [Development and tests](#development-and-tests)
+- [Limitations](#limitations)
+- [Documentation](#documentation)
 
 ## Application features
 
-| Area        | Features                                                                                                             |
-| ----------- | -------------------------------------------------------------------------------------------------------------------- |
-| Account     | Registration, sign-in, sign-out, password recovery, profile, and settings                                            |
-| Wardrobes   | Private and family spaces, members, roles, and invitations                                                           |
-| Catalog     | Search, filters, favorites, editing, archiving, and deleting garments                                                |
-| Import      | Single garments or batches of up to 200 images; each imported image creates one garment                              |
-| Photographs | Preserved original, background removal, transparent PNG, catalog image, and thumbnail                                |
-| Orientation | Manual rotation in 90-degree steps, preview, and reprocessing without overwriting the original                       |
-| Analysis    | Local category, color and pattern classification with FashionSigLIP; optional Ollama analysis and care-label reading |
-| Metadata    | Automatic names, warmth rules from 1 to 5, suggestions for approval, and optional automatic overwrites               |
-| Outfits     | Recommendations from available garments, saved outfits, and optional belt selection                                  |
-| Usage       | Laundry statuses and wear history                                                                                    |
-| Jobs        | Background processing, progress, errors, and retries; administrative Bull Board                                      |
-| Mobile      | Responsive interface, mobile navigation and PWA                                                                      |
-
-<a id="uruchomienie"></a>
+| Area           | Features                                                                                                                                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Account        | Registration, sign-in, sign-out, password recovery, profile, and settings                                                                                                                                 |
+| Wardrobes      | Private and family spaces, members, roles, and invitations                                                                                                                                                |
+| Catalog        | Search, filters, favorites, editing, archiving, and deleting garments                                                                                                                                     |
+| Import         | Single garments or batches of up to 200 images; each imported image creates one garment                                                                                                                   |
+| Photographs    | Preserved original, background removal, transparent PNG, catalog image, and thumbnail                                                                                                                     |
+| Orientation    | Manual rotation in 90-degree steps, preview, and reprocessing without overwriting the original                                                                                                            |
+| Analysis       | Local category, color and pattern classification with FashionSigLIP; optional Ollama analysis and care-label reading                                                                                      |
+| Metadata       | Automatic names, warmth rules from 1 to 5, suggestions for approval, and optional automatic overwrites                                                                                                    |
+| Outfits        | Recommendations from available garments, saved outfits, and optional belt selection                                                                                                                       |
+| Travel Packing | [Smart travel packing lists](docs/travel-packing.md) tailored to destination, trip duration and preferences, with AI enrichment, wardrobe matching, editable quantities, packing progress and saved lists |
+| Usage          | Laundry statuses and wear history                                                                                                                                                                         |
+| Jobs           | Background processing, progress, errors, and retries; administrative Bull Board                                                                                                                           |
+| Mobile         | Responsive interface, mobile navigation and PWA                                                                                                                                                           |
 
 ## Getting started
 
@@ -96,8 +92,6 @@ docker compose up -d --build
 | PostgreSQL      | `127.0.0.1:54322`                       | User `postgres`, database `postgres`, password `POSTGRES_PASSWORD`    |
 
 Studio and PostgreSQL are restricted to the host loopback interface. The Studio password is not an application-account password. Redis has no published port.
-
-<a id="jak-używać"></a>
 
 ## Using the application
 
@@ -163,8 +157,6 @@ On the **Family** screen (`/family`), manage members and invitations. Roles are 
 
 In **Settings → Your wardrobes**, the owner can delete a wardrobe. A confirmation first explains that its garments, photos, outfits, and history will also be deleted, including other members’ items. The user account is preserved. File and queue cleanup may finish in the background.
 
-<a id="zdjęcia-i-analiza-ai"></a>
-
 ## Images and AI analysis
 
 ### Two independent processes
@@ -194,8 +186,6 @@ Warmth comes from shared rules: T-shirt/top/shorts 1, shirt/polo/ordinary long t
 For the Ollama provider, set `GARMENT_ANALYSIS_PROVIDER=ollama`, point `OLLAMA_BASE_URL` to the LAN host address, and set `OLLAMA_VISION_MODEL` to an already installed vision model. Previous tests used models including `qwen3-vl:8b`. Do not use `localhost` as the address of another computer from inside a container.
 
 Ollama does not run in this Compose stack. It also provides optional care-label analysis. Reading composition or size requires a legible label and verification, rather than guessing from fabric appearance. An unavailable AI host does not block accounts, the catalog, or local image processing. Jobs use retries/backoff; exhausted attempts may require a manual retry. Infinite automatic retries are not promised.
-
-<a id="architektura"></a>
 
 ## Architecture
 
@@ -252,8 +242,6 @@ investigation/         private reports, experiments and backups, outside Git
 docker-compose.yml     the complete deployment
 ```
 
-<a id="konfiguracja"></a>
-
 ## Configuration
 
 Environment variable template: [`.env.example`](.env.example). Store secrets only locally, outside Git.
@@ -274,7 +262,7 @@ Environment variable template: [`.env.example`](.env.example). Store secrets onl
 
 ### LAN mobile access and PWA
 
-Add the exact `http://<IP-komputera>:8080` to `APP_ADDITIONAL_ORIGINS` in `.env`, then recreate the API:
+Add the exact `http://<host-ip>:8080` to `APP_ADDITIONAL_ORIGINS` in `.env`, then recreate the API:
 
 ```sh
 docker compose up -d --no-deps api
@@ -285,8 +273,6 @@ On the phone, open the same IP address with port 8080. A computer IP change requ
 ### Development email
 
 An existing local SMTP server can be used through the `dev-mail` profile and Node.js relay. This is not production configuration. The Mac host address from a container is `host.docker.internal`, not `localhost`. See [email configuration](infra/auth-email/README.md) and comments in `.env.example`. Never commit SMTP usernames or passwords.
-
-<a id="administracja-i-utrzymanie"></a>
 
 ## Administration and maintenance
 
@@ -327,8 +313,6 @@ Active images live in **`./data/storage/`**, without periodic export or synchron
 | No password reset email          | Working SMTP configuration; HTTP 200 alone does not confirm delivery                     |
 | Studio rejects the password      | Credentials from `DASHBOARD_*`, rather than a Smart Wardrobe user password               |
 
-<a id="development-i-testy"></a>
-
 ## Development and tests
 
 The repository uses Node **26.13.0**, pnpm **12.18.0**, strict TypeScript, and a pinned lockfile.
@@ -363,8 +347,6 @@ docker compose config --quiet
 
 SQL migrations are ordered and checksum-verified. Do not edit applied migrations; add a new, tested migration. Updating an existing installation requires a backup and a review of pending migrations before `up --build`.
 
-<a id="ograniczenia"></a>
-
 ## Limitations
 
 - Category, color, and pattern recognition can be wrong; automatic persistence does not guarantee correctness.
@@ -378,9 +360,9 @@ SQL migrations are ordered and checksum-verified. Do not edit applied migrations
 
 The last completed OrbStack migration verification covered 97 tests, lint, TypeScript, consistency of 548 photos, a real upload/download, and denial of access to another user. This records a specific verification, rather than automatically guaranteeing every installation’s current state. Detailed results and unverified scenarios are in the progress report.
 
-<a id="dokumentacja"></a>
-
 ## Documentation
+
+- [Documentation index](docs/README.md) — current references, historical records and archive status
 
 - [Proxmox LXC, HTTPS, and deployment](docs/deployment-proxmox.md)
 - [Architecture and decisions](docs/ARCHITECTURE.md) — read historical descriptions alongside the current progress report
