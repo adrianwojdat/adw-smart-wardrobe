@@ -28,6 +28,9 @@
     "invalidType": "Choose a JPEG, PNG or WebP file.",
     "fileTooLarge": "The image exceeds the 10 MB limit.",
     "fileEmpty": "The file is empty.",
-    "uploadFailed": "The photo could not be uploaded."
+    "uploadFailed": "The photo could not be uploaded.",
+    "stateCompleted": "Image ready",
+    "stateProcessing": "Processing image…",
+    "stateProcessingFailed": "Image processing failed. Open garment details for status and retry options."
   }
 }

@@ -28,6 +28,9 @@
     "invalidType": "Wybierz plik JPEG, PNG lub WebP.",
     "fileTooLarge": "Zdjęcie przekracza limit 10 MB.",
     "fileEmpty": "Plik jest pusty.",
-    "uploadFailed": "Nie udało się przesłać zdjęcia."
+    "uploadFailed": "Nie udało się przesłać zdjęcia.",
+    "stateCompleted": "Zdjęcie gotowe",
+    "stateProcessing": "Przetwarzanie zdjęcia…",
+    "stateProcessingFailed": "Przetwarzanie zdjęcia nie powiodło się. Otwórz szczegóły ubrania, aby sprawdzić status i dostępne opcje ponowienia."
   }
 }
