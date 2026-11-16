@@ -585,3 +585,13 @@ Verification: `pnpm check` passed, including 243 Vitest tests across 44 files, s
 Both standalone Compose variants now use `${STORAGE_PATH:-./data/storage}` for Storage and read-only imgproxy, generated from `scripts/compose.mjs`. `.env.example` documents the host/LXC path; absent or empty values preserve the existing default. No database mounts, credentials, schemas or application behavior changed. README and storage/backup/developer instructions cover a custom server directory, copying existing files with xattrs while writers are stopped, and retiring the previous server-local override so it cannot mask the new variable. No local or remote image files were moved.
 
 Focused production tests passed (eight cases), and six Docker Compose interpolation checks verified missing, empty and NAS-path values across both variants, including the shared source and read-only permissions. Full `pnpm check` passed with 244 tests across 44 files, workspace types/builds and no new quality-baseline issues. All 140 relative documentation links passed. No containers, real account data or production database were modified.
+
+## 2026-11-15 — bulk import processing status translations
+
+Added missing English/Polish `stateCompleted`, `stateProcessing` and `stateProcessingFailed` labels used by the bulk import page. Failed processing no longer exposes the translation key. This is a display fix only: the reported Proxmox image/AI failure requires worker and Storage diagnostics; no backend cause or runtime repair is claimed. Existing account data and services were not modified.
+
+## 2026-11-16 — production classifier asset resolution
+
+Corrected FashionSigLIP asset resolution after the feature-first move: the worker now reads root `infra/models/fashion-siglip/` rather than `apps/worker/infra/models/fashion-siglip/`. Added a regression test exercising the classifier loader with mocked file and ONNX access; no model inference or account writes are performed.
+
+Verification: focused classifier tests passed (3/3); full `pnpm check` passed (245 tests, typed lint with no new diagnostics, typecheck, style/language/i18n checks, dependency boundaries, Knip and builds). Production runtime inference still requires verification on the user server; no database or account data was modified.

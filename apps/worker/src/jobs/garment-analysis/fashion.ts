@@ -13,7 +13,7 @@ type Config = {
   groups: Record<'category' | 'color' | 'pattern', Prototype[]>;
 };
 
-const directory = new URL('../../../infra/models/fashion-siglip/', import.meta.url);
+const directory = new URL('../../../../../infra/models/fashion-siglip/', import.meta.url);
 let loaded: Promise<{ session: ORT.InferenceSession; config: Config }> | undefined;
 
 export function fashionEnabled() {
@@ -78,9 +78,9 @@ export async function analyzeFashion(
   rotation: number | null = null,
   signal?: AbortSignal,
 ) {
-  const ort = await import('onnxruntime-node');
   const started = performance.now();
   const { session, config } = await engine();
+  const ort = await import('onnxruntime-node');
   const normalized = await sharp(original, { limitInputPixels: 40_000_000 })
     .autoOrient()
     .flatten({ background: '#f5f4ef' })
